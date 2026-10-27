@@ -1,0 +1,256 @@
+/* =====================================================================
+   GAME 5: REVERSE MILLIONAIRE (millionaire.css) — matches hub.css & theme
+   ===================================================================== */
+
+.rm-stage {
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Mode Selector & Setup Card ---------- */
+
+.btn-mode-toggle {
+  appearance: none;
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: clamp(0.85rem, 2.2vw, 0.98rem);
+  padding: 0.85rem 1.4rem;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 4px 4px 0 var(--ink);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.btn-mode-toggle:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.btn-mode-toggle.active {
+  background: var(--c-coin);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+/* ---------- Vault Status Bar ---------- */
+
+.vault-status-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 1.2rem;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.vault-stat {
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  padding: 1rem 1.4rem;
+  text-align: center;
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.vault-stat.highlight-coins {
+  box-shadow: 5px 5px 0 var(--c-coin);
+}
+
+.stat-lbl {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted-paper);
+  letter-spacing: 1px;
+}
+
+.stat-big {
+  font-size: clamp(1.4rem, 3.2vw, 1.85rem);
+  font-weight: 800;
+  color: var(--ink);
+  margin-top: 0.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Question Card ---------- */
+
+.rm-question-card {
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 20px;
+  padding: clamp(1.4rem, 4vw, 2.2rem);
+  text-align: center;
+  width: 100%;
+  margin-bottom: 2rem;
+  box-shadow: 7px 7px 0 var(--c-coin);
+}
+
+.category-pill {
+  display: inline-block;
+  background: var(--c-coin);
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0.35rem 0.95rem;
+  border-radius: 999px;
+  margin-bottom: 0.9rem;
+}
+
+.rm-question-text {
+  font-size: clamp(1.25rem, 3.5vw, 1.7rem);
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+/* ---------- 4 Trapdoor Drop Podiums ---------- */
+
+.trapdoors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 1.2rem;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.trapdoor-podium {
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  padding: 1.4rem 1.1rem;
+  text-align: center;
+  box-shadow: 5px 5px 0 var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.trapdoor-podium.survived {
+  border-color: var(--ink);
+  box-shadow: 7px 7px 0 var(--c-grass);
+  background: #f0fdf4;
+}
+
+.trapdoor-podium.dropped {
+  opacity: 0.55;
+  transform: translateY(12px) scale(0.96);
+  filter: grayscale(0.8);
+}
+
+.podium-letter {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 800;
+  font-size: 1.1rem;
+  margin-bottom: 0.6rem;
+}
+
+.podium-option-text {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.3;
+  min-height: 2.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.podium-coin-display {
+  background: #f8fafc;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+  width: 100%;
+  margin-bottom: 0.9rem;
+}
+
+.coin-amt {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.coin-pct {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted-paper);
+}
+
+.podium-steppers {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  width: 100%;
+}
+
+.step-btn {
+  appearance: none;
+  background: var(--stage-2);
+  color: var(--on-stage);
+  border: 0;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.step-btn:hover {
+  background: var(--c-coin);
+  color: var(--ink);
+}
+
+/* ---------- Lock In / Controls Bar ---------- */
+
+.rm-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+.btn-lock-in {
+  appearance: none;
+  background: var(--c-coin);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  padding: 1rem 2rem;
+  border-radius: 14px;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 1.05rem;
+  cursor: pointer;
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-lock-in:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.btn-lock-in:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--ink);
+}

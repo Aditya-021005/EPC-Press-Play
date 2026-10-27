@@ -1,0 +1,234 @@
+/* =====================================================================
+   CORE THEME & DESIGN TOKENS (theme.css)
+   ===================================================================== */
+
+:root {
+  /* ---- Surfaces ---- */
+  --backdrop: #141246;
+  --stage: #25226f;
+  --stage-2: #1c1a58;
+  --ink: #16133f;
+  --paper: #ffffff;
+
+  /* ---- Text ---- */
+  --on-stage: #f3f2ff;
+  --muted-stage: #b8b5ec;
+  --muted-paper: #5a5684;
+
+  /* ---- Game accents ---- */
+  --c-grass: #3dd68c;
+  --c-sun: #ffc93c;
+  --c-sky: #5bbeff;
+  --c-grape: #b79bff;
+  --c-coin: #ffa23a;
+  --c-cherry: #ff7a93;
+
+  /* ---- Type ---- */
+  --font-display: var(--font-hub, ui-sans-serif), system-ui, sans-serif;
+  --font-mono: var(--font-display);
+
+  /* ---- Shape & motion ---- */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-full: 9999px;
+  --transition: 0.15s ease;
+
+  /* ---- Legacy aliases (old neon names → new palette) ---- */
+  --bg-dark: var(--backdrop);
+  --bg-card: rgba(255, 255, 255, 0.06);
+  --bg-card-hover: rgba(255, 255, 255, 0.1);
+  --border-glass: rgba(255, 255, 255, 0.12);
+  --border-neon: rgba(91, 190, 255, 0.4);
+  --neon-cyan: var(--c-sky);
+  --neon-green: var(--c-grass);
+  --neon-yellow: var(--c-sun);
+  --neon-pink: var(--c-cherry);
+  --neon-purple: var(--c-grape);
+  --neon-red: var(--c-cherry);
+  --gold: var(--c-coin);
+  --text-main: var(--on-stage);
+  --text-muted: var(--muted-stage);
+  --text-glow: var(--on-stage);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip; /* not "hidden" — that breaks position: sticky */
+}
+
+body {
+  min-height: 100vh;
+  background-color: var(--backdrop);
+  color: var(--on-stage);
+  font-family: var(--font-display);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Background layers — kept so existing markup still works, now subtle */
+.app-bg-glow {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: var(--backdrop);
+}
+
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+}
+
+/* ---------- Button base ----------
+   :where() keeps specificity at zero, so any class
+   (.game__btn, .topbar__host, …) overrides it cleanly. */
+
+:where(button) {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button):focus-visible {
+  outline: 3px solid var(--c-sun);
+  outline-offset: 3px;
+}
+
+:where(button):disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ---------- Primary action buttons ---------- */
+
+.btn-action {
+  padding: 0.85rem 1.5rem;
+  border-radius: 12px;
+  font-size: clamp(0.92rem, 2.5vw, 1.02rem);
+  font-weight: 800;
+  text-align: center;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.btn-action:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--ink);
+}
+
+.btn-action:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.btn-gold  { background: var(--c-coin); }
+.btn-green { background: var(--c-grass); }
+.btn-cyan  { background: var(--c-sky); }
+.btn-red   { background: var(--c-cherry); }
+
+/* ---------- Secondary buttons ---------- */
+
+.btn-secondary-sm,
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.65rem 1.15rem;
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  color: var(--ink);
+  border: 2.5px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  font-size: clamp(0.82rem, 2vw, 0.92rem);
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.btn-secondary-sm:hover:not(:disabled),
+.btn-back:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: var(--ink);
+  transform: translate(-1.5px, -1.5px);
+  box-shadow: 4.5px 4.5px 0 var(--ink);
+}
+
+.btn-secondary-sm:active:not(:disabled),
+.btn-back:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.btn-secondary-sm:disabled,
+.btn-back:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+/* ---------- Keyframes (used by game screens) ---------- */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes flipTile {
+  0%   { transform: rotateX(0); }
+  50%  { transform: rotateX(90deg); }
+  100% { transform: rotateX(0); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-15px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-action,
+  .btn-secondary-sm,
+  .btn-back {
+    transition: none;
+  }
+}

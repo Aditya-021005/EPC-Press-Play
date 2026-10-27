@@ -1,0 +1,80 @@
+/* =====================================================================
+   GAME 6: OFFLINE ARENA (offline.css) — matches hub.css & theme
+   ===================================================================== */
+
+.offline-stage {
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.offline-hero-card {
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 8px 8px 0 var(--c-cherry);
+  border-radius: 22px;
+  padding: clamp(2rem, 5vw, 3rem);
+  text-align: center;
+  width: 100%;
+}
+
+.offline-icon-large {
+  font-size: clamp(3.5rem, 8vw, 4.5rem);
+  margin-bottom: 0.8rem;
+}
+
+.offline-hero-card h3 {
+  font-size: clamp(1.5rem, 4vw, 2.1rem);
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  margin-bottom: 0.8rem;
+}
+
+.offline-hero-card p {
+  color: var(--muted-paper);
+  font-size: clamp(0.95rem, 2.5vw, 1.08rem);
+  margin-bottom: 1.8rem;
+  line-height: 1.6;
+}
+
+.offline-score-form label {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 1rem;
+}
+
+.input-score-group {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.input-score-group input {
+  width: 140px;
+  background: #f8fafc;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  color: var(--ink);
+  font-size: 2.2rem;
+  font-weight: 900;
+  text-align: center;
+  padding: 0.6rem 0.8rem;
+  outline: none;
+  box-shadow: 4px 4px 0 var(--c-cherry);
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.input-score-group input:focus {
+  background: #ffffff;
+  box-shadow: 6px 6px 0 var(--c-cherry);
+}

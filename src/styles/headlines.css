@@ -1,0 +1,207 @@
+/* =====================================================================
+   GAME 2: REAL HEADLINE OR NOT (headlines.css)
+   Fitted to 100vh, Fully Centered, Unified Topbar Theme
+   ===================================================================== */
+
+.headline-stage {
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Newspaper Presentation Card ---------- */
+
+.newspaper-card {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: var(--radius-lg);
+  padding: clamp(1.2rem, 2.8vh, 1.8rem);
+  box-shadow: 6px 6px 0 var(--c-sun);
+  border: 3px solid var(--ink);
+  margin-bottom: 1.2rem;
+  width: 100%;
+  position: relative;
+}
+
+.newspaper-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 0.45rem;
+  margin-bottom: 1rem;
+  font-size: clamp(0.75rem, 1.8vw, 0.85rem);
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--muted-paper);
+}
+
+.news-body {
+  position: relative;
+  padding: 0.2rem 0.5rem;
+  text-align: center;
+}
+
+.headline-quote-mark {
+  font-size: 2.6rem;
+  color: var(--c-sun);
+  line-height: 0.5;
+  font-weight: 900;
+  font-family: Georgia, serif;
+}
+
+.headline-quote-mark.closing {
+  text-align: right;
+  margin-top: 0.6rem;
+}
+
+.headline-text {
+  font-size: clamp(1.2rem, 3.2vh, 1.7rem);
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--ink);
+  margin: 0.5rem 0;
+  letter-spacing: -0.01em;
+}
+
+.news-footer {
+  border-top: 2px dashed rgba(22, 19, 63, 0.2);
+  padding-top: 0.65rem;
+  margin-top: 0.9rem;
+  text-align: center;
+  font-size: clamp(0.78rem, 1.8vw, 0.88rem);
+  font-weight: 600;
+  color: var(--muted-paper);
+}
+
+/* ---------- Tactile Choice Buttons ---------- */
+
+.headline-choices {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.2rem;
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.btn-choice {
+  appearance: none;
+  padding: 1rem 1.2rem;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.real-btn {
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--c-grass);
+}
+
+.real-btn:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--c-grass);
+  background: #f0fdf4;
+}
+
+.real-btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--c-grass);
+}
+
+.fake-btn {
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--c-cherry);
+}
+
+.fake-btn:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--c-cherry);
+  background: #fff1f2;
+}
+
+.fake-btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--c-cherry);
+}
+
+.choice-icon {
+  font-size: 1.9rem;
+}
+
+.choice-text {
+  font-size: clamp(1.05rem, 2.2vw, 1.25rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.choice-sub {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted-paper);
+}
+
+/* ---------- Reveal Results Panel ---------- */
+
+.headline-reveal-panel {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 20px;
+  padding: clamp(1.4rem, 3.5vh, 2rem);
+  width: 100%;
+  text-align: center;
+  box-shadow: 6px 6px 0 var(--c-sun);
+  border: 3px solid var(--ink);
+  animation: scaleUp 0.3s ease;
+}
+
+.reveal-badge {
+  display: inline-block;
+  padding: 0.35rem 0.95rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+}
+
+.reveal-badge.badge-correct {
+  background: var(--c-grass);
+  color: var(--ink);
+}
+
+.reveal-badge.badge-wrong {
+  background: var(--c-cherry);
+  color: var(--ink);
+}
+
+.reveal-title {
+  font-size: clamp(1.25rem, 3.2vh, 1.65rem);
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 0.5rem;
+}
+
+.reveal-context {
+  color: var(--muted-paper);
+  font-size: clamp(0.9rem, 2.2vw, 1.05rem);
+  margin-bottom: 1.2rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 580px) {
+  .headline-choices {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+}

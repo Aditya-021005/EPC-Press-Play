@@ -1,0 +1,356 @@
+/* =====================================================================
+   HEADER (header.css) — matches hub.css
+   ===================================================================== */
+
+.topbar {
+  --stage: #25226f;
+  --stage-2: #1c1a58;
+  --ink: #16133f;
+  --paper: #ffffff;
+  --on-stage: #f3f2ff;
+  --muted-stage: #b8b5ec;
+  --muted-paper: #5a5684;
+  --c-sun: #ffc93c;
+  --c-grass: #3dd68c;
+  --c-coin: #ffa23a;
+
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--stage-2);
+  color: var(--on-stage);
+  font-family: var(--font-hub), ui-sans-serif, system-ui, sans-serif;
+  box-shadow: 0 4px 0 var(--ink);
+}
+
+.topbar *,
+.topbar *::before,
+.topbar *::after {
+  box-sizing: border-box;
+}
+
+.topbar__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0.85rem 1.25rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "brand meter actions";
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* ---------- Brand & In-Game Back Navigation ---------- */
+
+.topbar__back-btn {
+  grid-area: brand;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.88rem;
+  box-shadow: 3px 3px 0 var(--c-sun);
+  border: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.topbar__back-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--c-sun);
+  background: var(--c-sun);
+}
+
+.topbar__back-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--c-sun);
+}
+
+.topbar__back-icon {
+  font-size: 0.85rem;
+}
+
+.topbar__back-text {
+  letter-spacing: 0.5px;
+}
+
+.topbar__game-tag {
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.topbar__brand {
+  grid-area: brand;
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.topbar__logo {
+  display: inline-block;
+  padding: 0.25em 0.65em;
+  border-radius: 8px;
+  background: var(--c-sun);
+  color: var(--ink);
+  font-weight: 800;
+  white-space: nowrap;
+  transform: rotate(-3deg);
+  transition: transform 0.15s ease;
+}
+
+.topbar__brand:hover .topbar__logo {
+  transform: rotate(0deg) scale(1.04);
+}
+
+.topbar__brand-text {
+  display: grid;
+  line-height: 1.15;
+}
+
+.topbar__name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.topbar__sub {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted-stage);
+  white-space: nowrap;
+}
+
+/* ---------- Score meter ---------- */
+
+.topbar__meter {
+  grid-area: meter;
+  justify-self: center;
+  width: 100%;
+  max-width: 380px;
+  padding: 0.55rem 0.9rem 0.65rem;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--c-sun);
+}
+
+.topbar__meter-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.topbar__meter-labels > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar__rank {
+  margin-left: 0.45rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.72rem;
+}
+
+.topbar__meter-val {
+  flex-shrink: 0;
+  color: var(--muted-paper);
+  font-variant-numeric: tabular-nums;
+}
+
+.topbar__meter-val strong {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.topbar__track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(22, 19, 63, 0.1);
+  overflow: hidden;
+}
+
+.topbar__fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ink);
+  transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ---------- Actions ---------- */
+
+.topbar__actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.topbar__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.topbar__chip-label {
+  color: var(--muted-stage);
+}
+
+.topbar__chip strong {
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--paper);
+}
+
+.topbar__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-grass);
+}
+
+.topbar__chip--sync.is-local .topbar__dot {
+  background: var(--c-coin);
+}
+
+.topbar__icon-btn {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--on-stage);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.topbar__icon-btn:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.topbar__host {
+  appearance: none;
+  padding: 0.6rem 1rem;
+  border: 0;
+  border-radius: 12px;
+  background: var(--c-sun);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 var(--ink);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.topbar__host:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.topbar__host:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.topbar__host.is-active {
+  background: var(--c-grass);
+}
+
+.topbar__brand:focus-visible,
+.topbar__icon-btn:focus-visible,
+.topbar__host:focus-visible {
+  outline: 3px solid var(--c-sun);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1099px) {
+  .topbar__chip:not(.topbar__chip--sync) {
+    display: none; /* team name is already shown in the meter */
+  }
+}
+
+@media (max-width: 899px) {
+  .topbar__inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand actions"
+      "meter meter";
+    gap: 0.75rem 1rem;
+  }
+
+  .topbar__meter {
+    max-width: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar__inner {
+    padding: 0.7rem 0.75rem 0.85rem;
+  }
+
+  .topbar__sub,
+  .topbar__chip--sync {
+    display: none;
+  }
+
+  .topbar__host {
+    padding: 0.55rem 0.8rem;
+    font-size: 0.85rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar__logo,
+  .topbar__fill,
+  .topbar__icon-btn,
+  .topbar__host {
+    transition: none;
+  }
+}

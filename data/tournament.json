@@ -1,0 +1,52 @@
+{
+  "activeTeam": "Team Alpha",
+  "teams": [
+    {
+      "name": "Team Alpha",
+      "greenerGrass": 0,
+      "realHeadline": 50,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 50,
+      "lastUpdated": 1792770734151
+    },
+    {
+      "name": "Team Bravo",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1792761082871
+    },
+    {
+      "name": "Team Charlie",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1792761082871
+    },
+    {
+      "name": "Solo Champion",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1792761082871
+    }
+  ],
+  "version": 1792761082873,
+  "adminPin": "1234",
+  "lockedGames": []
+}

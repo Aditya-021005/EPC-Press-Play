@@ -1,0 +1,69 @@
+/* =====================================================================
+   ADMIN & HOST CONTROL PANEL (admin.css) — matches hub.css & theme
+   ===================================================================== */
+
+.admin-lock-card {
+  max-width: 500px;
+  width: 100%;
+  margin: 0 auto;
+  background: var(--paper);
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 22px;
+  padding: 2.2rem;
+  box-shadow: 8px 8px 0 var(--c-sun);
+  text-align: center;
+}
+
+.admin-matrix-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-top: 1rem;
+}
+
+.admin-matrix-input {
+  width: 72px;
+  background: #f8fafc;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.98rem;
+  font-weight: 800;
+  text-align: center;
+  padding: 0.45rem;
+  outline: none;
+  transition: box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.admin-matrix-input:focus {
+  background: #ffffff;
+  box-shadow: 3px 3px 0 var(--c-sun);
+}
+
+.admin-toast-banner {
+  background: var(--c-grass);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  padding: 0.85rem 1.4rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  font-weight: 800;
+  box-shadow: 4px 4px 0 var(--ink);
+  animation: fadeIn 0.3s ease;
+}
+
+.danger-zone-box {
+  background: #fff1f2;
+  border: 3px solid var(--c-cherry);
+  border-radius: 18px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  color: var(--ink);
+  box-shadow: 4px 4px 0 var(--c-cherry);
+}
