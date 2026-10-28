@@ -1,0 +1,1137 @@
+{
+  "categories": [
+    {
+      "id": "spades-A",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "A",
+      "code": "A♠",
+      "color": "black",
+      "name": "Country or Capital City",
+      "icon": "globe",
+      "hint": "e.g. France, Madrid, Brazil..."
+    },
+    {
+      "id": "spades-2",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "2",
+      "code": "2♠",
+      "color": "black",
+      "name": "Animal or Sea Creature",
+      "icon": "paw",
+      "hint": "e.g. Tiger, Dolphin, Elephant..."
+    },
+    {
+      "id": "spades-3",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "3",
+      "code": "3♠",
+      "color": "black",
+      "name": "Kitchen Appliance or Utensil",
+      "icon": "utensils",
+      "hint": "e.g. Microwave, Fork, Blender..."
+    },
+    {
+      "id": "spades-4",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "4",
+      "code": "4♠",
+      "color": "black",
+      "name": "Movie or TV Series Title",
+      "icon": "film",
+      "hint": "e.g. Titanic, Friends, Gladiator..."
+    },
+    {
+      "id": "spades-5",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "5",
+      "code": "5♠",
+      "color": "black",
+      "name": "Famous Musician or Band",
+      "icon": "guitar",
+      "hint": "e.g. Adele, Beatles, Coldplay..."
+    },
+    {
+      "id": "spades-6",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "6",
+      "code": "6♠",
+      "color": "black",
+      "name": "Fruit, Vegetable or Herb",
+      "icon": "carrot",
+      "hint": "e.g. Mango, Broccoli, Basil..."
+    },
+    {
+      "id": "spades-7",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "7",
+      "code": "7♠",
+      "color": "black",
+      "name": "Superhero or Comic Character",
+      "icon": "mask",
+      "hint": "e.g. Batman, Spider-Man, Thor..."
+    },
+    {
+      "id": "spades-8",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "8",
+      "code": "8♠",
+      "color": "black",
+      "name": "Global Brand or Company",
+      "icon": "tag",
+      "hint": "e.g. Nike, Apple, Ferrari..."
+    },
+    {
+      "id": "spades-9",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "9",
+      "code": "9♠",
+      "color": "black",
+      "name": "Words Yelled in Anger/Excitement",
+      "icon": "bullhorn",
+      "hint": "e.g. Stop, Hurray, Wow, No..."
+    },
+    {
+      "id": "spades-10",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "10",
+      "code": "10♠",
+      "color": "black",
+      "name": "Things in a Suitcase",
+      "icon": "suitcase",
+      "hint": "e.g. Passport, Socks, Sunscreen..."
+    },
+    {
+      "id": "spades-J",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "J",
+      "code": "J♠",
+      "color": "black",
+      "name": "Musical Instrument",
+      "icon": "guitar",
+      "hint": "e.g. Guitar, Piano, Saxophone..."
+    },
+    {
+      "id": "spades-Q",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "Q",
+      "code": "Q♠",
+      "color": "black",
+      "name": "Sport or Physical Game",
+      "icon": "futbol",
+      "hint": "e.g. Soccer, Tennis, Basketball..."
+    },
+    {
+      "id": "spades-K",
+      "suit": "spades",
+      "suitSymbol": "♠",
+      "rank": "K",
+      "code": "K♠",
+      "color": "black",
+      "name": "Job or Profession",
+      "icon": "briefcase",
+      "hint": "e.g. Doctor, Architect, Pilot..."
+    },
+    {
+      "id": "hearts-A",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "A",
+      "code": "A♥",
+      "color": "red",
+      "name": "Things Found in a Hospital",
+      "icon": "briefcase",
+      "hint": "e.g. Stethoscope, Syringe, Wheelchair..."
+    },
+    {
+      "id": "hearts-2",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "2",
+      "code": "2♥",
+      "color": "red",
+      "name": "Dessert or Sweet Snack",
+      "icon": "cookie",
+      "hint": "e.g. Donut, Chocolate, Ice Cream..."
+    },
+    {
+      "id": "hearts-3",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "3",
+      "code": "3♥",
+      "color": "red",
+      "name": "Item on an Office Desk",
+      "icon": "paperclip",
+      "hint": "e.g. Stapler, Computer, Printer..."
+    },
+    {
+      "id": "hearts-4",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "4",
+      "code": "4♥",
+      "color": "red",
+      "name": "College / Campus Stereotype",
+      "icon": "star",
+      "hint": "e.g. Exam, Hostel, Canteen..."
+    },
+    {
+      "id": "hearts-5",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "5",
+      "code": "5♥",
+      "color": "red",
+      "name": "Clothing Item or Accessory",
+      "icon": "tag",
+      "hint": "e.g. Jacket, Scarf, Sneakers..."
+    },
+    {
+      "id": "hearts-6",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "6",
+      "code": "6♥",
+      "color": "red",
+      "name": "Vehicle, Aircraft or Vessel",
+      "icon": "wrench",
+      "hint": "e.g. Ferrari, Helicopter, Yacht..."
+    },
+    {
+      "id": "hearts-7",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "7",
+      "code": "7♥",
+      "color": "red",
+      "name": "Things Found in a Bathroom",
+      "icon": "utensils",
+      "hint": "e.g. Shampoo, Towel, Mirror..."
+    },
+    {
+      "id": "hearts-8",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "8",
+      "code": "8♥",
+      "color": "red",
+      "name": "Pizza Topping",
+      "icon": "cookie",
+      "hint": "e.g. Mushroom, Pepperoni, Jalapeno..."
+    },
+    {
+      "id": "hearts-9",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "9",
+      "code": "9♥",
+      "color": "red",
+      "name": "Board Game or Card Game",
+      "icon": "mask",
+      "hint": "e.g. Monopoly, Catan, Poker, Uno..."
+    },
+    {
+      "id": "hearts-10",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "10",
+      "code": "10♥",
+      "color": "red",
+      "name": "Beverage or Drink",
+      "icon": "utensils",
+      "hint": "e.g. Cappuccino, Lemonade, Cola..."
+    },
+    {
+      "id": "hearts-J",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "J",
+      "code": "J♥",
+      "color": "red",
+      "name": "Fictional Monster or Creature",
+      "icon": "paw",
+      "hint": "e.g. Dragon, Vampire, Goblin..."
+    },
+    {
+      "id": "hearts-Q",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "Q",
+      "code": "Q♥",
+      "color": "red",
+      "name": "Color or Shade",
+      "icon": "film",
+      "hint": "e.g. Crimson, Turquoise, Amber..."
+    },
+    {
+      "id": "hearts-K",
+      "suit": "hearts",
+      "suitSymbol": "♥",
+      "rank": "K",
+      "code": "K♥",
+      "color": "red",
+      "name": "Something That Flies",
+      "icon": "globe",
+      "hint": "e.g. Eagle, Airplane, Mosquito..."
+    },
+    {
+      "id": "diamonds-A",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "A",
+      "code": "A♦",
+      "color": "red",
+      "name": "Fast Food Chain",
+      "icon": "cookie",
+      "hint": "e.g. McDonald's, Subway, Domino's..."
+    },
+    {
+      "id": "diamonds-2",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "2",
+      "code": "2♦",
+      "color": "red",
+      "name": "Song Title (Any Language)",
+      "icon": "guitar",
+      "hint": "e.g. Stay, Believer, Kesariya..."
+    },
+    {
+      "id": "diamonds-3",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "3",
+      "code": "3♦",
+      "color": "red",
+      "name": "Famous World Leader / Ruler",
+      "icon": "star",
+      "hint": "e.g. Gandhi, Caesar, Churchill..."
+    },
+    {
+      "id": "diamonds-4",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "4",
+      "code": "4♦",
+      "color": "red",
+      "name": "Part of the Human Body",
+      "icon": "paw",
+      "hint": "e.g. Forehead, Elbow, Kidney..."
+    },
+    {
+      "id": "diamonds-5",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "5",
+      "code": "5♦",
+      "color": "red",
+      "name": "Something Very Cold",
+      "icon": "globe",
+      "hint": "e.g. Iceberg, Gelato, Glacier..."
+    },
+    {
+      "id": "diamonds-6",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "6",
+      "code": "6♦",
+      "color": "red",
+      "name": "Something Very Hot",
+      "icon": "bullhorn",
+      "hint": "e.g. Lava, Chili, Sun, Steam..."
+    },
+    {
+      "id": "diamonds-7",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "7",
+      "code": "7♦",
+      "color": "red",
+      "name": "Social Media App or Website",
+      "icon": "tag",
+      "hint": "e.g. Instagram, Reddit, YouTube..."
+    },
+    {
+      "id": "diamonds-8",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "8",
+      "code": "8♦",
+      "color": "red",
+      "name": "Language or Dialect",
+      "icon": "globe",
+      "hint": "e.g. Spanish, German, Japanese..."
+    },
+    {
+      "id": "diamonds-9",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "9",
+      "code": "9♦",
+      "color": "red",
+      "name": "Things Found at the Beach",
+      "icon": "suitcase",
+      "hint": "e.g. Seashell, Towel, Umbrella..."
+    },
+    {
+      "id": "diamonds-10",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "10",
+      "code": "10♦",
+      "color": "red",
+      "name": "Things in a Classroom",
+      "icon": "paperclip",
+      "hint": "e.g. Blackboard, Chalk, Projector..."
+    },
+    {
+      "id": "diamonds-J",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "J",
+      "code": "J♦",
+      "color": "red",
+      "name": "Cartoon or Anime Character",
+      "icon": "mask",
+      "hint": "e.g. Pikachu, Homer, Mickey..."
+    },
+    {
+      "id": "diamonds-Q",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "Q",
+      "code": "Q♦",
+      "color": "red",
+      "name": "Video Game Title",
+      "icon": "film",
+      "hint": "e.g. Minecraft, Zelda, Fortnite..."
+    },
+    {
+      "id": "diamonds-K",
+      "suit": "diamonds",
+      "suitSymbol": "♦",
+      "rank": "K",
+      "code": "K♦",
+      "color": "red",
+      "name": "Things That Make You Sneeze",
+      "icon": "bullhorn",
+      "hint": "e.g. Dust, Pepper, Smoke..."
+    },
+    {
+      "id": "clubs-A",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "A",
+      "code": "A♣",
+      "color": "black",
+      "name": "Tree, Flower or Plant",
+      "icon": "carrot",
+      "hint": "e.g. Orchid, Pine, Rose, Cactus..."
+    },
+    {
+      "id": "clubs-2",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "2",
+      "code": "2♣",
+      "color": "black",
+      "name": "Breakfast Food",
+      "icon": "cookie",
+      "hint": "e.g. Pancake, Omelette, Waffle..."
+    },
+    {
+      "id": "clubs-3",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "3",
+      "code": "3♣",
+      "color": "black",
+      "name": "Weapon or Armor",
+      "icon": "wrench",
+      "hint": "e.g. Sword, Shield, Dagger, Helmet..."
+    },
+    {
+      "id": "clubs-4",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "4",
+      "code": "4♣",
+      "color": "black",
+      "name": "Reason to Be Late to Class",
+      "icon": "bullhorn",
+      "hint": "e.g. Traffic, Alarm failed, Flat tire..."
+    },
+    {
+      "id": "clubs-5",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "5",
+      "code": "5♣",
+      "color": "black",
+      "name": "Book or Novel Title",
+      "icon": "film",
+      "hint": "e.g. 1984, Hamlet, Dune, Odyssey..."
+    },
+    {
+      "id": "clubs-6",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "6",
+      "code": "6♣",
+      "color": "black",
+      "name": "Things Under the Bed",
+      "icon": "suitcase",
+      "hint": "e.g. Slippers, Dust, Storage box..."
+    },
+    {
+      "id": "clubs-7",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "7",
+      "code": "7♣",
+      "color": "black",
+      "name": "Amusement Park Ride / Food",
+      "icon": "star",
+      "hint": "e.g. Rollercoaster, Popcorn..."
+    },
+    {
+      "id": "clubs-8",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "8",
+      "code": "8♣",
+      "color": "black",
+      "name": "Things with Wheels",
+      "icon": "wrench",
+      "hint": "e.g. Bicycle, Skateboard, Tractor..."
+    },
+    {
+      "id": "clubs-9",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "9",
+      "code": "9♣",
+      "color": "black",
+      "name": "Crime or Illegal Action",
+      "icon": "mask",
+      "hint": "e.g. Robbery, Speeding, Fraud..."
+    },
+    {
+      "id": "clubs-10",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "10",
+      "code": "10♣",
+      "color": "black",
+      "name": "Holiday or Festival",
+      "icon": "star",
+      "hint": "e.g. Diwali, Christmas, Halloween..."
+    },
+    {
+      "id": "clubs-J",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "J",
+      "code": "J♣",
+      "color": "black",
+      "name": "Things Found in Outer Space",
+      "icon": "globe",
+      "hint": "e.g. Comet, Galaxy, Asteroid..."
+    },
+    {
+      "id": "clubs-Q",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "Q",
+      "code": "Q♣",
+      "color": "black",
+      "name": "Excuses People Give When Caught",
+      "icon": "bullhorn",
+      "hint": "e.g. It was a prank, I forgot..."
+    },
+    {
+      "id": "clubs-K",
+      "suit": "clubs",
+      "suitSymbol": "♣",
+      "rank": "K",
+      "code": "K♣",
+      "color": "black",
+      "name": "Something Made of Metal",
+      "icon": "wrench",
+      "hint": "e.g. Key, Coin, Anchor, Fork..."
+    }
+  ],
+  "tunes": [
+    {
+      "id": "t1",
+      "song": "Bohemian Rhapsody",
+      "artist": "Queen",
+      "year": 1975,
+      "genre": "Classic Rock",
+      "lyric": "Is this the real life? Is this just fantasy? Caught in a landslide, no escape from reality."
+    },
+    {
+      "id": "t2",
+      "song": "Billie Jean",
+      "artist": "Michael Jackson",
+      "year": 1982,
+      "genre": "Pop / Funk",
+      "lyric": "She was more like a beauty queen from a movie scene, I said don't mind, but what do you mean I am the one."
+    },
+    {
+      "id": "t3",
+      "song": "Never Gonna Give You Up",
+      "artist": "Rick Astley",
+      "year": 1987,
+      "genre": "Dance Pop",
+      "lyric": "We're no strangers to love, you know the rules and so do I, a full commitment's what I'm thinking of."
+    },
+    {
+      "id": "t4",
+      "song": "Lose Yourself",
+      "artist": "Eminem",
+      "year": 2002,
+      "genre": "Hip-Hop",
+      "lyric": "His palms are sweaty, knees weak, arms are heavy, there's vomit on his sweater already, mom's spaghetti."
+    },
+    {
+      "id": "t5",
+      "song": "Rolling in the Deep",
+      "artist": "Adele",
+      "year": 2010,
+      "genre": "Soul / Pop",
+      "lyric": "There's a fire starting in my heart, reaching a fever pitch and it's bringing me out the dark."
+    },
+    {
+      "id": "t6",
+      "song": "Livin' on a Prayer",
+      "artist": "Bon Jovi",
+      "year": 1986,
+      "genre": "Arena Rock",
+      "lyric": "Tommy used to work on the docks, union's been on strike, he's down on his luck, it's tough, so tough."
+    },
+    {
+      "id": "t7",
+      "song": "Bad Guy",
+      "artist": "Billie Eilish",
+      "year": 2019,
+      "genre": "Alt Pop",
+      "lyric": "White shirt now red, my bloody nose, sleepin', you're on your tippy toes, creepin' around like no one knows."
+    },
+    {
+      "id": "t8",
+      "song": "Viva La Vida",
+      "artist": "Coldplay",
+      "year": 2008,
+      "genre": "Alt Rock",
+      "lyric": "I used to rule the world, seas would rise when I gave the word, now in the morning I sleep alone."
+    },
+    {
+      "id": "t9",
+      "song": "Shape of You",
+      "artist": "Ed Sheeran",
+      "year": 2017,
+      "genre": "Pop",
+      "lyric": "The club isn't the best place to find a lover, so the bar is where I go, me and my friends at the table doing shots."
+    },
+    {
+      "id": "t10",
+      "song": "Hotel California",
+      "artist": "Eagles",
+      "year": 1976,
+      "genre": "Rock",
+      "lyric": "On a dark desert highway, cool wind in my hair, warm smell of colitas rising up through the air."
+    },
+    {
+      "id": "t11",
+      "song": "Smells Like Teen Spirit",
+      "artist": "Nirvana",
+      "year": 1991,
+      "genre": "Grunge / Rock",
+      "lyric": "Load up on guns, bring your friends, it's fun to lose and to pretend, she's over-bored and self-assured."
+    },
+    {
+      "id": "t12",
+      "song": "Sweet Child O' Mine",
+      "artist": "Guns N' Roses",
+      "year": 1987,
+      "genre": "Hard Rock",
+      "lyric": "She's got a smile that it seems to me reminds me of childhood memories, where everything was as fresh as the bright blue sky."
+    },
+    {
+      "id": "t13",
+      "song": "Blinding Lights",
+      "artist": "The Weeknd",
+      "year": 2020,
+      "genre": "Synthwave / Pop",
+      "lyric": "I look around and Sin City's cold and empty, no one's around to judge me, I can't see clearly when you're gone."
+    },
+    {
+      "id": "t14",
+      "song": "Wonderwall",
+      "artist": "Oasis",
+      "year": 1995,
+      "genre": "Britpop",
+      "lyric": "Today is gonna be the day that they're gonna throw it back to you, by now you should've somehow realized what you gotta do."
+    },
+    {
+      "id": "t15",
+      "song": "Counting Stars",
+      "artist": "OneRepublic",
+      "year": 2013,
+      "genre": "Pop Rock",
+      "lyric": "Lately, I've been, I've been losing sleep, dreaming about the things that we could be, but baby, I've been praying hard."
+    }
+  ],
+  "headlines": [
+    {
+      "id": "h1",
+      "headline": "Swedish city dumps one ton of chicken manure in central park to stop festival party crowds",
+      "isReal": true,
+      "outletHint": "BBC News • Lund, Sweden",
+      "explanation": "In 2020, officials in Lund dumped smelly chicken manure in the park to deter 30,000 students from gathering for Walpurgis Night festivities during lockdowns.",
+      "source": "BBC News / The Guardian"
+    },
+    {
+      "id": "h2",
+      "headline": "NASA astronauts successfully brew first batch of espresso in zero gravity using space tomatoes",
+      "isReal": false,
+      "outletHint": "Cosmos Weekly",
+      "explanation": "While NASA did send an 'ISSpresso' machine to space in 2015, they definitely did not brew coffee using tomatoes!",
+      "source": "Fabricated"
+    },
+    {
+      "id": "h3",
+      "headline": "Pigeon detained by police in India under suspicion of espionage released after 8-month investigation",
+      "isReal": true,
+      "outletHint": "Associated Press • Mumbai",
+      "explanation": "A suspected Pakistani spy pigeon captured near a port in Mumbai was cleared and released into the wild after police confirmed it was just an open-water racing bird from Taiwan.",
+      "source": "Associated Press"
+    },
+    {
+      "id": "h4",
+      "headline": "Man calls 911 to complain about tiny portion size of his takeout fried rice",
+      "isReal": true,
+      "outletHint": "ABC News • Ohio, USA",
+      "explanation": "An Ohio man was charged with improper use of emergency services after calling 911 because he was dissatisfied with the food portions from a local Chinese restaurant.",
+      "source": "ABC News"
+    },
+    {
+      "id": "h5",
+      "headline": "French parliament legally reclassifies baguettes as emotional support items for commuters",
+      "isReal": false,
+      "outletHint": "Le Figaro Satire",
+      "explanation": "Baguettes were placed on UNESCO's intangible cultural heritage list, but they are not legally recognized as emotional therapy tools.",
+      "source": "Fabricated"
+    },
+    {
+      "id": "h6",
+      "headline": "Chess grandmaster loses exhibition match after chess-playing robot arm snatches and breaks his finger",
+      "isReal": true,
+      "outletHint": "The Guardian • Moscow",
+      "explanation": "During the Moscow Chess Open in 2022, an AI robot arm mistook a 7-year-old opponent's rapid finger movement for a chess piece and grabbed it, fracturing his finger.",
+      "source": "The Guardian"
+    },
+    {
+      "id": "h7",
+      "headline": "Bank robber hands teller demand note written on the back of his own personal employment paycheck",
+      "isReal": true,
+      "outletHint": "Fox News • Pennsylvania",
+      "explanation": "Police quickly arrested the robber after finding his full legal name, home address, and employer printed directly on the demand note he handed to the cashier.",
+      "source": "Fox News / CBS"
+    },
+    {
+      "id": "h8",
+      "headline": "Tesla announces software update enabling Cybertrucks to float autonomously as deep-sea submarines",
+      "isReal": false,
+      "outletHint": "Tech Drive Gazette",
+      "explanation": "Elon Musk tweeted that Cybertruck could 'briefly serve as a boat', but autonomous deep-sea submarine navigation remains purely science fiction.",
+      "source": "Fabricated"
+    },
+    {
+      "id": "h9",
+      "headline": "Town in Japan installs robotic monster wolves with red flashing eyes to scare wild bears away from neighborhoods",
+      "isReal": true,
+      "outletHint": "Reuters • Takikawa, Japan",
+      "explanation": "Takikawa town deployed solar-powered 'Monster Wolves' featuring motorized heads, flashing LED eyes, and 60 different howling sounds to deter foraging bears.",
+      "source": "Reuters"
+    },
+    {
+      "id": "h10",
+      "headline": "Florida man attempts to pay for McDonald's drive-thru order with large bag of marijuana",
+      "isReal": true,
+      "outletHint": "Tampa Bay Times • Florida",
+      "explanation": "A 23-year-old Florida man was arrested after McDonald's drive-thru employees rejected his offer to trade marijuana for fast food burgers and called the sheriff.",
+      "source": "Tampa Bay Times"
+    },
+    {
+      "id": "h11",
+      "headline": "Archaeologists unearth 2,000-year-old Roman tomb containing functional copper battery powering an LED",
+      "isReal": false,
+      "outletHint": "History Today Mysteries",
+      "explanation": "While the ancient Baghdad Battery existed in antiquity, LEDs weren't invented until the 20th century and no ancient battery is powering modern diodes!",
+      "source": "Fabricated"
+    },
+    {
+      "id": "h12",
+      "headline": "Man fakes his own kidnapping and hides in garage for two days to avoid paying for girlfriend's wedding",
+      "isReal": true,
+      "outletHint": "Sky News • Colombia",
+      "explanation": "A 55-year-old man in Colombia staged his own violent abduction with friend accomplices hours before his wedding ceremony because he got cold feet and lacked funds.",
+      "source": "Sky News"
+    },
+    {
+      "id": "h13",
+      "headline": "Police deploy riot squad after dispute over pineapple on pizza escalates into street brawl outside Italian restaurant",
+      "isReal": false,
+      "outletHint": "Naples Morning Gazette",
+      "explanation": "Italians may hate Hawaiian pizza with a passion, but no Italian city has ever deployed riot police with water cannons over pineapple toppings.",
+      "source": "Fabricated"
+    },
+    {
+      "id": "h14",
+      "headline": "Airline passengers vote unanimously mid-flight to eject man refusing to put away bag of durian fruit",
+      "isReal": false,
+      "outletHint": "Aviation Daily",
+      "explanation": "Planes have made emergency diversions due to durian odor, but federal aviation safety regulations strictly prohibit passenger mob ejections!",
+      "source": "Fabricated"
+    },
+    {
+      "id": "h15",
+      "headline": "Escaped zoo flamingo spotted living happily with wild flock in Texas 17 years after breaking out",
+      "isReal": true,
+      "outletHint": "National Geographic • Texas Gulf",
+      "explanation": "Flamingo No. 492 escaped a Wichita, Kansas zoo during a 2005 storm and was photographed thriving alongside local coastal wildlife in Texas almost two decades later.",
+      "source": "National Geographic"
+    },
+    {
+      "id": "h16",
+      "headline": "Man breaks into restaurant, cooks himself a full gourmet three-course meal, does the dishes, and leaves cash on counter",
+      "isReal": true,
+      "outletHint": "NPR • North Carolina",
+      "explanation": "Surveillance footage showed the polite burglar making cheese burgers, pouring himself a beverage, wiping down the grill, and leaving $20 on the register.",
+      "source": "NPR / Police Blotter"
+    }
+  ],
+  "millionaire": [
+    {
+      "id": "m1",
+      "category": "GEOGRAPHY & NATURE",
+      "question": "Which of these countries has the longest continuous coastline in the world?",
+      "options": [
+        "Canada",
+        "Russia",
+        "Australia",
+        "Indonesia"
+      ],
+      "correctIndex": 0,
+      "explanation": "Canada boasts 243,042 kilometers of coastline across three oceans, vastly outranking any other nation!"
+    },
+    {
+      "id": "m2",
+      "category": "SCIENCE & ASTRONOMY",
+      "question": "Which planet in our solar system rotates clockwise on its axis (retrograde rotation)?",
+      "options": [
+        "Mars",
+        "Venus",
+        "Saturn",
+        "Neptune"
+      ],
+      "correctIndex": 1,
+      "explanation": "Venus (along with Uranus) rotates backwards compared to most other planets, so the Sun rises in the west and sets in the east."
+    },
+    {
+      "id": "m3",
+      "category": "HISTORY & ARCHAEOLOGY",
+      "question": "Which ancient civilization constructed the cliffside city of Machu Picchu?",
+      "options": [
+        "Maya Empire",
+        "Aztec Empire",
+        "Inca Empire",
+        "Olmec Civilization"
+      ],
+      "correctIndex": 2,
+      "explanation": "Machu Picchu was built by the Inca Empire around 1450 AD in the Eastern Cordillera of southern Peru."
+    },
+    {
+      "id": "m4",
+      "category": "ANIMAL KINGDOM",
+      "question": "Which mammal possesses the most powerful bite force relative to its body size?",
+      "options": [
+        "Grizzly Bear",
+        "Hippopotamus",
+        "Tasmanian Devil",
+        "Hyena"
+      ],
+      "correctIndex": 2,
+      "explanation": "The Tasmanian Devil possesses a bite force quotient of 181, generating enough pressure to crush thick bones despite weighing only 18 lbs!"
+    },
+    {
+      "id": "m5",
+      "category": "TECHNOLOGY & INNOVATION",
+      "question": "In what year was the very first iPhone officially announced by Steve Jobs?",
+      "options": [
+        "2005",
+        "2007",
+        "2009",
+        "2010"
+      ],
+      "correctIndex": 1,
+      "explanation": "Steve Jobs unveiled the revolutionary original iPhone on January 9, 2007 at the Macworld convention in San Francisco."
+    },
+    {
+      "id": "m6",
+      "category": "POP CULTURE & CINEMA",
+      "question": "Which film was the very first animated feature movie released by Walt Disney Studios?",
+      "options": [
+        "Pinocchio",
+        "Bambi",
+        "Snow White and the Seven Dwarfs",
+        "Dumbo"
+      ],
+      "correctIndex": 2,
+      "explanation": "Snow White and the Seven Dwarfs premiered in December 1937 as Hollywood's first full-length cel-animated feature."
+    },
+    {
+      "id": "m7",
+      "category": "WORLD RECORDS",
+      "question": "What is the deepest known location in Earth's oceans?",
+      "options": [
+        "Challenger Deep",
+        "Java Trench",
+        "Puerto Rico Trench",
+        "Sunda Deep"
+      ],
+      "correctIndex": 0,
+      "explanation": "Challenger Deep in the Mariana Trench plunges nearly 11,000 meters (36,000 feet) below sea level."
+    },
+    {
+      "id": "m8",
+      "category": "CHEMISTRY & ELEMENTS",
+      "question": "What is the only metal element that remains a liquid at standard room temperature and pressure?",
+      "options": [
+        "Gallium",
+        "Mercury",
+        "Bromine",
+        "Cesium"
+      ],
+      "correctIndex": 1,
+      "explanation": "Mercury (Hg) is a liquid at room temperature. Bromine is also liquid, but it is a halogen non-metal!"
+    },
+    {
+      "id": "m9",
+      "category": "LITERATURE & ARTS",
+      "question": "Who painted the iconic surrealist masterpiece 'The Persistence of Memory' featuring melting clocks?",
+      "options": [
+        "Pablo Picasso",
+        "René Magritte",
+        "Salvador Dalí",
+        "Claude Monet"
+      ],
+      "correctIndex": 2,
+      "explanation": "Salvador Dalí completed 'The Persistence of Memory' in 1931, cementing melting watches as the hallmark of Surrealism."
+    },
+    {
+      "id": "m10",
+      "category": "SPORTS & ATHLETICS",
+      "question": "In standard Olympic archery competitions, how far away from the archer is the target placed?",
+      "options": [
+        "50 meters",
+        "70 meters",
+        "90 meters",
+        "100 meters"
+      ],
+      "correctIndex": 1,
+      "explanation": "Standard World Archery and Olympic recurve competition distance is exactly 70 meters."
+    }
+  ],
+  "words": [
+    "PLANT",
+    "SPARK",
+    "GAMES",
+    "CLOUD",
+    "BEACH",
+    "CHAMP",
+    "BRAIN",
+    "LIGHT",
+    "PRIDE",
+    "FLAME",
+    "SHINE",
+    "TRACK",
+    "MUSIC",
+    "POWER",
+    "VIBES",
+    "SCORE",
+    "CROWN",
+    "DREAM",
+    "HEART",
+    "QUEST",
+    "BLAZE",
+    "NIGHT",
+    "SPACE",
+    "FOCUS",
+    "SMART",
+    "LUCKY",
+    "MAGIC",
+    "SWIFT",
+    "RADIO",
+    "TIGER",
+    "PULSE",
+    "MATCH"
+  ],
+  "bullseye": [
+    {
+      "id": "b1",
+      "name": "Oscar Best Picture Winners (Post-2000)",
+      "hint": "Academy Award winning films",
+      "examples": [
+        "Gladiator",
+        "The Departed",
+        "Parasite",
+        "Oppenheimer",
+        "Slumdog Millionaire",
+        "The Artist"
+      ]
+    },
+    {
+      "id": "b2",
+      "name": "European Capital Cities",
+      "hint": "Official capital cities located in Europe",
+      "examples": [
+        "Paris",
+        "Berlin",
+        "Rome",
+        "Madrid",
+        "Lisbon",
+        "Amsterdam",
+        "Dublin",
+        "Oslo"
+      ]
+    },
+    {
+      "id": "b3",
+      "name": "Billion-Dollar Video Game Franchises",
+      "hint": "Massive gaming series/titles",
+      "examples": [
+        "Grand Theft Auto",
+        "Call of Duty",
+        "Minecraft",
+        "Pokemon",
+        "Mario",
+        "FIFA",
+        "Fortnite"
+      ]
+    },
+    {
+      "id": "b4",
+      "name": "Chemical Elements Named After People or Places",
+      "hint": "From the periodic table",
+      "examples": [
+        "Curium",
+        "Einsteinium",
+        "Californium",
+        "Polonium",
+        "Americium",
+        "Francium",
+        "Nobelium"
+      ]
+    },
+    {
+      "id": "b5",
+      "name": "Superheroes with Zero Inherent Superpowers",
+      "hint": "Fighters relying solely on wealth, tech, or martial arts",
+      "examples": [
+        "Batman",
+        "Iron Man",
+        "Hawkeye",
+        "Black Widow",
+        "Green Arrow",
+        "Punisher"
+      ]
+    },
+    {
+      "id": "b6",
+      "name": "Countries That Have Hosted the FIFA World Cup",
+      "hint": "Nations that hosted men's football World Cup",
+      "examples": [
+        "Brazil",
+        "Qatar",
+        "Russia",
+        "South Africa",
+        "Germany",
+        "France",
+        "Japan",
+        "Mexico"
+      ]
+    },
+    {
+      "id": "b7",
+      "name": "Companies in the S&P 500 / Trillion Dollar Club",
+      "hint": "World's most valuable tech & commercial titans",
+      "examples": [
+        "Apple",
+        "Microsoft",
+        "Nvidia",
+        "Alphabet / Google",
+        "Amazon",
+        "Meta",
+        "Tesla"
+      ]
+    },
+    {
+      "id": "b8",
+      "name": "Fictional Magic Spells or Potions",
+      "hint": "From fantasy lore (Harry Potter, LOTR, D&D)",
+      "examples": [
+        "Expelliarmus",
+        "Avada Kedavra",
+        "Polyjuice",
+        "Lumos",
+        "Alohomora",
+        "Felix Felicis"
+      ]
+    },
+    {
+      "id": "b9",
+      "name": "Mammals That Lay Eggs or Live Underwater",
+      "hint": "Monotremes or marine mammals",
+      "examples": [
+        "Platypus",
+        "Echidna",
+        "Dolphin",
+        "Blue Whale",
+        "Sea Otter",
+        "Walrus",
+        "Seal"
+      ]
+    },
+    {
+      "id": "b10",
+      "name": "Languages with over 100 Million Native Speakers",
+      "hint": "Most widely spoken world tongues",
+      "examples": [
+        "Mandarin",
+        "Spanish",
+        "English",
+        "Hindi",
+        "Bengali",
+        "Portuguese",
+        "Russian",
+        "Japanese"
+      ]
+    }
+  ],
+  "version": 1
+}

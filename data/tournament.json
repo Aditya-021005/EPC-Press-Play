@@ -1,19 +1,8 @@
 {
-  "activeTeam": "Team Alpha",
+  "activeTeam": "sdfvkjbfsvl",
   "teams": [
     {
-      "name": "Team Alpha",
-      "greenerGrass": 0,
-      "realHeadline": 50,
-      "nameThatTune": 0,
-      "categories": 0,
-      "reverseMillionaire": 0,
-      "offlineGame": 0,
-      "total": 50,
-      "lastUpdated": 1792770734151
-    },
-    {
-      "name": "Team Bravo",
+      "name": "jj",
       "greenerGrass": 0,
       "realHeadline": 0,
       "nameThatTune": 0,
@@ -21,10 +10,10 @@
       "reverseMillionaire": 0,
       "offlineGame": 0,
       "total": 0,
-      "lastUpdated": 1792761082871
+      "lastUpdated": 1793199580212
     },
     {
-      "name": "Team Charlie",
+      "name": "hh",
       "greenerGrass": 0,
       "realHeadline": 0,
       "nameThatTune": 0,
@@ -32,10 +21,10 @@
       "reverseMillionaire": 0,
       "offlineGame": 0,
       "total": 0,
-      "lastUpdated": 1792761082871
+      "lastUpdated": 1793199580212
     },
     {
-      "name": "Solo Champion",
+      "name": "nknkkj",
       "greenerGrass": 0,
       "realHeadline": 0,
       "nameThatTune": 0,
@@ -43,10 +32,54 @@
       "reverseMillionaire": 0,
       "offlineGame": 0,
       "total": 0,
-      "lastUpdated": 1792761082871
+      "lastUpdated": 1793199580212
+    },
+    {
+      "name": "ff",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1793199580212
+    },
+    {
+      "name": "dfsnklfn",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1793199580212
+    },
+    {
+      "name": "khdsbks",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1793199580212
+    },
+    {
+      "name": "sdfvkjbfsvl",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1793204128458
     }
   ],
-  "version": 1792761082873,
+  "version": 26,
   "adminPin": "1234",
   "lockedGames": []
 }

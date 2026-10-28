@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { PLAYABLE_LETTERS } from "@/data/categories";
 import { sound } from "@/lib/audio";
 import confetti from "canvas-confetti";
+import "@/styles/wheel-modal.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark, faCheck, faPlay, faRotate, faSpinner, faDice } from "@fortawesome/free-solid-svg-icons";
 
@@ -121,7 +122,7 @@ export default function LetterWheelModal({
           <span className="wheel-badge">SCATTERGORIES • ROULETTE</span>
           <h3 className="wheel-modal-title">SPIN THE LETTER WHEEL</h3>
           <p className="wheel-modal-sub">
-            The arrow at 12 o&apos;clock decides your target letter for all 5 categories!
+            The arrow at 12 o&apos;clock decides your target letter for all 10 categories!
           </p>
         </div>
 

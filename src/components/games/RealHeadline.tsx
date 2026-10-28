@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { HEADLINES_POOL, HeadlineItem } from "@/data/headlines";
+import { fetchGameContent } from "@/lib/gameContent";
 import { sound } from "@/lib/audio";
 import confetti from "canvas-confetti";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -23,27 +24,70 @@ interface RealHeadlineProps {
 }
 
 export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHeadlineProps) {
-  const [rounds] = useState<HeadlineItem[]>(() => {
+  const [rounds, setRounds] = useState<HeadlineItem[]>(() => {
     return [...HEADLINES_POOL].sort(() => 0.5 - Math.random()).slice(0, 10);
   });
+
+  useEffect(() => {
+    fetchGameContent().then((content) => {
+      if (content?.headlines && content.headlines.length > 0) {
+        setRounds([...content.headlines].sort(() => 0.5 - Math.random()).slice(0, 10));
+      }
+    });
+  }, []);
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<boolean | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
 
+  // 20-second timer per headline
+  const [timeLeft, setTimeLeft] = useState(20);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const currentItem = rounds[currentIdx] || HEADLINES_POOL[0];
+
+  // Timer effect per headline
+  useEffect(() => {
+    if (isRevealed) return;
+
+    setTimeLeft(20);
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          sound.playBuzzer();
+          // Timeout counts as incorrect choice (null)
+          setSelectedAnswer(null);
+          setIsRevealed(true);
+          return 0;
+        }
+        if (prev <= 5) {
+          sound.playCountdownBeep(prev === 1);
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [currentIdx, isRevealed]);
+
   useEffect(() => {
     onUpdateMeta?.({
       title: "Headlines",
       score,
-      roundInfo: `Round ${currentIdx + 1}/10`,
+      roundInfo: `Round ${currentIdx + 1}/10 • ${isRevealed ? "Revealed" : `${timeLeft}s`}`,
     });
-  }, [score, currentIdx, onUpdateMeta]);
-
-  const currentItem = rounds[currentIdx];
+  }, [score, currentIdx, timeLeft, isRevealed, onUpdateMeta]);
 
   const handleChoice = (choice: boolean) => {
     if (isRevealed) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+
     setSelectedAnswer(choice);
     setIsRevealed(true);
 
@@ -67,15 +111,74 @@ export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHea
       // Completed all 10
       sound.playSuccess();
       confetti({ particleCount: 90, spread: 70 });
-      onFinish(score);
+      onFinish(0);
     }
   };
 
   const isCorrect = selectedAnswer === currentItem?.isReal;
+  const isTimeout = selectedAnswer === null && isRevealed;
 
   return (
     <div className="game-arena">
       <div className="game-body-center headline-stage">
+        {/* Top Status & 20s Countdown Timer */}
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "760px",
+            background: "var(--paper)",
+            border: "3px solid var(--ink)",
+            boxShadow: "5px 5px 0 var(--ink)",
+            borderRadius: "var(--radius-lg)",
+            padding: "0.85rem 1.4rem",
+            marginBottom: "1.2rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "0.8rem",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <span
+              style={{
+                display: "inline-block",
+                padding: "0.25rem 0.75rem",
+                borderRadius: "9999px",
+                background: "var(--c-sun)",
+                color: "var(--ink)",
+                fontFamily: "var(--font-mono)",
+                fontWeight: 900,
+                fontSize: "0.8rem",
+                border: "2px solid var(--ink)",
+              }}
+            >
+              HEADLINE {currentIdx + 1} OF 10
+            </span>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 700, color: "var(--muted-paper)" }}>
+              Current Score: <strong style={{ color: "var(--c-grass)" }}>{score}</strong> / 100 PTS
+            </span>
+          </div>
+
+          <div
+            style={{
+              padding: "0.45rem 1.2rem",
+              borderRadius: "12px",
+              background: timeLeft <= 5 ? "var(--c-cherry)" : "var(--stage)",
+              color: timeLeft <= 5 ? "#fff" : "var(--on-stage)",
+              border: "3px solid var(--ink)",
+              boxShadow: "2px 2px 0 var(--ink)",
+              fontFamily: "var(--font-mono)",
+              fontWeight: 900,
+              fontSize: "1.4rem",
+              minWidth: "90px",
+              textAlign: "center",
+            }}
+          >
+            {isRevealed ? "—" : `${timeLeft}s`}
+          </div>
+        </div>
+
         {/* Newspaper Presentation Card */}
         <div className="newspaper-card">
           <div className="newspaper-header">
@@ -90,7 +193,7 @@ export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHea
           </div>
 
           <div className="news-footer">
-            <span>Can you separate genuine human oddity from fabricated clickbait?</span>
+            <span>20 Seconds per headline • Spot the real-world truth from fabricated clickbait!</span>
           </div>
         </div>
 
@@ -122,8 +225,17 @@ export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHea
         ) : (
           /* Reveal Panel */
           <div className="headline-reveal-panel">
-            <span className={`reveal-badge ${isCorrect ? "badge-correct" : "badge-wrong"}`}>
-              {isCorrect ? (
+            <span
+              className={`reveal-badge ${
+                isCorrect ? "badge-correct" : "badge-wrong"
+              }`}
+            >
+              {isTimeout ? (
+                <>
+                  <FontAwesomeIcon icon={faXmark} style={{ marginRight: "0.4rem" }} />
+                  TIME EXPIRED (0 PTS)
+                </>
+              ) : isCorrect ? (
                 <>
                   <FontAwesomeIcon icon={faCheck} style={{ marginRight: "0.4rem" }} />
                   CORRECT GUESS (+10 PTS)
@@ -131,7 +243,7 @@ export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHea
               ) : (
                 <>
                   <FontAwesomeIcon icon={faXmark} style={{ marginRight: "0.4rem" }} />
-                  INCORRECT
+                  INCORRECT (0 PTS)
                 </>
               )}
             </span>

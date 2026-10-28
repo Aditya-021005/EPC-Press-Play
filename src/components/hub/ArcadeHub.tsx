@@ -9,6 +9,7 @@ interface ArcadeHubProps {
   activeTeam: TeamScore;
   allTeams: TeamScore[];
   onSelectGame: (gameId: string) => void;
+  onLogout: () => void;
 }
 
 type ScoreKey =
@@ -39,8 +40,8 @@ const GAMES: GameDef[] = [
     short: "Grass",
     tag: "Wordle twist",
     accent: "var(--c-grass)",
-    blurb: "Points only for green tiles. The moment a yellow tile shows up, play stops.",
-    facts: ["5 words", "4 pts per green", "Yellow ends the round"],
+    blurb: "Points only for green tiles. 30 seconds per word. Yellow hazards bust the round!",
+    facts: ["5 words", "30s per guess", "Yellow busts"],
     cta: "Play Greener Grass",
   },
   {
@@ -50,8 +51,8 @@ const GAMES: GameDef[] = [
     short: "Headlines",
     tag: "Truth vs fiction",
     accent: "var(--c-sun)",
-    blurb: "Bizarre, unbelievable headlines. Spot the real-world madness among the fakes.",
-    facts: ["10 rounds", "10 pts per correct call", "Source dossier reveal"],
+    blurb: "Bizarre headlines with a 20-second clock. Spot the real-world madness among fakes.",
+    facts: ["10 rounds", "20s per headline", "10 pts per call"],
     cta: "Play Headlines",
   },
   {
@@ -59,10 +60,10 @@ const GAMES: GameDef[] = [
     key: "nameThatTune",
     title: "Name That Tune",
     short: "Tune",
-    tag: "Audio sleuth",
+    tag: "Lyric sleuth",
     accent: "var(--c-sky)",
-    blurb: "Name the song and artist from lyric snippets. Fewer hints means more points.",
-    facts: ["10 songs", "Synth melody previews", "Hint ladder"],
+    blurb: "Single lyric snippet under a 30s clock. Manually type song and artist. Host evaluated.",
+    facts: ["10 lyrics", "30s per track", "EPC scored (0, 5, 10 pts)"],
     cta: "Play Name That Tune",
   },
   {
@@ -70,10 +71,10 @@ const GAMES: GameDef[] = [
     key: "categories",
     title: "Categories",
     short: "Categories",
-    tag: "Scattergories",
+    tag: "52 Playing Cards",
     accent: "var(--c-grape)",
-    blurb: "Draw a category, spin for a letter, and beat the 60-second clock.",
-    facts: ["Letter roulette", "60s clock", "Auto-check answers"],
+    blurb: "52 playing cards deck, draw 10, roll a random letter, and sprint for 60 seconds. EPC scored.",
+    facts: ["52 playing cards", "60s sprint", "EPC scored (0, 5, 10 pts)"],
     cta: "Play Categories",
   },
   {
@@ -83,20 +84,20 @@ const GAMES: GameDef[] = [
     short: "Millionaire",
     tag: "Trapdoor heist",
     accent: "var(--c-coin)",
-    blurb: "Split your coins across 4 trapdoors. Wrong doors drop; safe coins carry on.",
-    facts: ["100 or 200 coins", "Coin splitting", "5 or 10 puzzles"],
+    blurb: "5 questions, 100 coins, 30s per question. Distribute coins across trapdoors. Safe door carries on.",
+    facts: ["100 coins", "5 questions", "30s per question"],
     cta: "Play Reverse Millionaire",
   },
   {
     id: "offline",
     key: "offlineGame",
-    title: "Live Offline Stage",
-    short: "Live",
-    tag: "In the room",
+    title: "Bullseye",
+    short: "Bullseye",
+    tag: "Darts & Archery",
     accent: "var(--c-cherry)",
-    blurb: "A physical activity hosted live. The host records points here.",
-    facts: ["Physical stage", "Host scorekeeper", "0–100 pts"],
-    cta: "Open scorekeeper",
+    blurb: "Physical darts & archery simulation. Shoot 5 target boards & enter 3 category guesses each.",
+    facts: ["5 Target Boards", "3 Guesses Each", "Host Scored (0–100 pts)"],
+    cta: "Play Bullseye",
   },
 ];
 
@@ -125,7 +126,12 @@ function PointsBar({ team, size }: { team: TeamScore; size?: "lg" | "sm" }) {
   );
 }
 
-export default function ArcadeHub({ activeTeam, allTeams, onSelectGame }: ArcadeHubProps) {
+export default function ArcadeHub({
+  activeTeam,
+  allTeams,
+  onSelectGame,
+  onLogout,
+}: ArcadeHubProps) {
   const rankedTeams = [...allTeams].sort((a, b) => b.total - a.total);
   const activeRank = rankedTeams.findIndex((t) => t.name === activeTeam.name) + 1;
   const gamesPlayed = GAMES.filter((g) => activeTeam[g.key] > 0).length;
@@ -145,16 +151,29 @@ export default function ArcadeHub({ activeTeam, allTeams, onSelectGame }: Arcade
           </p>
           <h2 className="hub-title">Choose your challenge</h2>
           <p className="hub-lede">
-            Six games, 100 points each. Five on screen, one live in the room. Highest total out of {MAX_TOTAL} wins.
+            Six games, 100 points each. Play through all challenges, then finish your turn to let the next team log in.
           </p>
         </div>
 
         <section className="scorecard" aria-label="Active team score">
           <div className="scorecard__head">
-            <span>Now playing</span>
+            <span>Now playing on this laptop</span>
             {activeRank > 0 && <span className="scorecard__rank">#{activeRank}</span>}
           </div>
           <p className="scorecard__team">{activeTeam.name}</p>
+
+          <button
+            type="button"
+            className="btn-secondary-sm"
+            onClick={() => {
+              sound.playClick();
+              onLogout();
+            }}
+            style={{ width: "100%", margin: "0.5rem 0", fontSize: "0.82rem", padding: "0.5rem" }}
+          >
+            Finish Turn / Give Up (Log Out)
+          </button>
+
           <p className="scorecard__total">
             <span>{activeTeam.total}</span> / {MAX_TOTAL}
           </p>

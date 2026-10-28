@@ -1,17 +1,18 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { TARGET_WORDS, isValidWord } from "@/data/words";
+import { fetchGameContent } from "@/lib/gameContent";
 import { sound } from "@/lib/audio";
 import confetti from "canvas-confetti";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faTriangleExclamation,
-  faCircleCheck,
   faBomb,
   faBuildingColumns,
   faTrophy,
   faArrowRight,
+  faHourglassHalf,
 } from "@fortawesome/free-solid-svg-icons";
 
 interface GreenerGrassProps {
@@ -28,13 +29,23 @@ interface GuessRecord {
 }
 
 const MAX_GUESSES = 6;
+const TURN_TIMEOUT_SECONDS = 30;
 
 export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: GreenerGrassProps) {
   // 5 words per run
-  const [wordList] = useState<string[]>(() => {
+  const [wordList, setWordList] = useState<string[]>(() => {
     const shuffled = [...TARGET_WORDS].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, 5);
   });
+
+  useEffect(() => {
+    fetchGameContent().then((content) => {
+      if (content?.words && content.words.length > 0) {
+        const shuffled = [...content.words].sort(() => 0.5 - Math.random());
+        setWordList(shuffled.slice(0, 5));
+      }
+    });
+  }, []);
 
   const [currentWordIdx, setCurrentWordIdx] = useState(0);
   const [guesses, setGuesses] = useState<GuessRecord[]>([]);
@@ -42,9 +53,13 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
   const [hazardTriggered, setHazardTriggered] = useState(false);
   const [totalGameScore, setTotalGameScore] = useState(0);
   const [currentWordBanked, setCurrentWordBanked] = useState(0);
-  const [statusMsg, setStatusMsg] = useState("Type a 5-letter word and press ENTER");
+  const [statusMsg, setStatusMsg] = useState("Type a 5-letter word within 30s and press ENTER");
   const [wordFinished, setWordFinished] = useState(false);
   const [keyboardLetterStatus, setKeyboardLetterStatus] = useState<Record<string, TileStatus>>({});
+
+  // 30-second timer per word guess
+  const [timeLeft, setTimeLeft] = useState(TURN_TIMEOUT_SECONDS);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const targetWord = wordList[currentWordIdx];
 
@@ -55,9 +70,42 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
     setHazardTriggered(false);
     setCurrentWordBanked(0);
     setWordFinished(false);
-    setStatusMsg("Guess 1 of 6: Find green tiles! Avoid yellow hazards!");
+    setStatusMsg("Guess 1 of 6: Find green tiles within 30s! Avoid yellow hazards!");
     setKeyboardLetterStatus({});
+    setTimeLeft(TURN_TIMEOUT_SECONDS);
   }, []);
+
+  // 30s countdown effect
+  useEffect(() => {
+    if (hazardTriggered || wordFinished) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+
+    setTimeLeft(TURN_TIMEOUT_SECONDS);
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!);
+          sound.playHazardAlarm();
+          setHazardTriggered(true);
+          setWordFinished(true);
+          setStatusMsg(`TIME EXPIRED (30s)! Turn timed out. The word was ${targetWord}`);
+          return 0;
+        }
+        if (prev <= 6) {
+          sound.playCountdownBeep(prev === 1);
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [guesses.length, currentWordIdx, hazardTriggered, wordFinished, targetWord]);
 
   const handleKeyPress = useCallback((key: string) => {
     if (hazardTriggered || wordFinished) return;
@@ -73,6 +121,9 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
         setStatusMsg(`'${currentGuess}' is not in dictionary!`);
         return;
       }
+
+      // Reset timer for next guess
+      setTimeLeft(TURN_TIMEOUT_SECONDS);
 
       // Evaluate guess
       const guessArr = currentGuess.split("");
@@ -212,26 +263,64 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
   const finishGame = (score: number) => {
     sound.playSuccess();
     confetti({ particleCount: 100, spread: 80 });
-    onFinish(Math.min(100, score));
+    onFinish(0);
   };
 
   const keyboardRows = [
     ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-    ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "DEL"]
+    ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "DEL"],
   ];
 
   useEffect(() => {
     onUpdateMeta?.({
       title: "Greener Grass",
       score: totalGameScore,
-      roundInfo: `Word ${currentWordIdx + 1}/5`,
+      roundInfo: `Word ${currentWordIdx + 1}/5 • ${hazardTriggered || wordFinished ? "Round Over" : `${timeLeft}s`}`,
     });
-  }, [totalGameScore, currentWordIdx, onUpdateMeta]);
+  }, [totalGameScore, currentWordIdx, timeLeft, hazardTriggered, wordFinished, onUpdateMeta]);
 
   return (
     <div className="game-arena wordle-arena">
       <div className="game-body-center">
+        {/* Top Timer Bar (30s per word turn) */}
+        <div
+          style={{
+            width: "100%",
+            maxWidth: "500px",
+            background: "var(--paper)",
+            border: "3px solid var(--ink)",
+            boxShadow: "4px 4px 0 var(--ink)",
+            borderRadius: "var(--radius-md)",
+            padding: "0.6rem 1.2rem",
+            marginBottom: "1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.88rem", color: "var(--ink)" }}>
+            Word {currentWordIdx + 1} of 5 • Banked: <strong style={{ color: "var(--c-grass)" }}>{totalGameScore} pts</strong>
+          </span>
+
+          <div
+            style={{
+              padding: "0.35rem 0.9rem",
+              borderRadius: "10px",
+              background: timeLeft <= 6 ? "var(--c-cherry)" : "var(--stage)",
+              color: timeLeft <= 6 ? "#fff" : "var(--on-stage)",
+              border: "2px solid var(--ink)",
+              fontFamily: "var(--font-mono)",
+              fontWeight: 900,
+              fontSize: "1.2rem",
+              minWidth: "75px",
+              textAlign: "center",
+            }}
+          >
+            {hazardTriggered || wordFinished ? "—" : `${timeLeft}s`}
+          </div>
+        </div>
+
         {/* Rules Reminder / Hazard Banner */}
         {hazardTriggered ? (
           <div className="rules-banner hazard-alert-banner">
@@ -239,7 +328,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
               <FontAwesomeIcon icon={faBomb} />
             </span>
             <div>
-              <strong>HAZARD STRUCK:</strong> Yellow tile appeared! Play stopped. The word was <strong>{targetWord}</strong>.
+              <strong>HAZARD STRUCK:</strong> {statusMsg}
             </div>
           </div>
         ) : (
@@ -248,12 +337,12 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
               <FontAwesomeIcon icon={faTriangleExclamation} />
             </span>
             <div>
-              <strong>RULE:</strong> <strong>4 PTS</strong> for every <strong>GREEN</strong>. <strong>YELLOW</strong> busts! Bank current greens or push your luck!
+              <strong>RULE:</strong> <strong>30s</strong> to submit each word. <strong>4 PTS</strong> per <strong>GREEN</strong>. <strong>YELLOW</strong> busts!
             </div>
           </div>
         )}
 
-        {/* Wordle Board Grid (6 rows of 5 tiles visible like normal Wordle) */}
+        {/* Wordle Board Grid (6 rows of 5 tiles) */}
         <div className="wordle-board">
           {Array.from({ length: MAX_GUESSES }).map((_, rIdx) => {
             if (rIdx < guesses.length) {

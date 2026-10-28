@@ -27,15 +27,19 @@ export default function CelebrationModal({
         <div className="confetti-launcher">
           <FontAwesomeIcon icon={faAward} />
         </div>
-        <h2>{gameTitle.toUpperCase()} COMPLETE!</h2>
+        <h2>{gameTitle.toUpperCase()} SUBMITTED!</h2>
         <p>
-          Awesome performance! Points have been recorded to the official 600-point tournament scorekeeper.
+          {pointsEarned > 0
+            ? "Awesome performance! Points have been recorded to the official 600-point tournament scorekeeper."
+            : "Awesome performance! Your responses have been submitted to the EPC Host for live evaluation and scoring."}
         </p>
 
-        <div className="celeb-points">+{pointsEarned} PTS</div>
+        <div className="celeb-points" style={{ fontSize: pointsEarned > 0 ? "2.5rem" : "1.4rem" }}>
+          {pointsEarned > 0 ? `+${pointsEarned} PTS` : "HOST SCORING LIVE"}
+        </div>
 
         <div style={{ fontFamily: "var(--font-mono)", fontSize: "1.1rem", marginBottom: "1.8rem", color: "var(--neon-yellow)" }}>
-          Active Team Tournament Standing: <strong>{newTotal} / 600 PTS</strong>
+          Active Tournament Score: <strong>{newTotal} / 600 PTS</strong>
         </div>
 
         <button className="btn-action btn-gold" onClick={onClose} style={{ width: "100%", padding: "1rem" }}>

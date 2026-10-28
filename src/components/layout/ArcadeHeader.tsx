@@ -10,9 +10,8 @@ import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 interface ArcadeHeaderProps {
   activeTeam: TeamScore;
   allTeams: TeamScore[];
-  isAdmin: boolean;
-  onOpenAdmin: () => void;
   onGoHome: () => void;
+  onLogout?: () => void;
   isBackendConnected?: boolean;
   gameMeta?: {
     title: string;
@@ -40,9 +39,8 @@ function SpeakerIcon({ muted }: { muted: boolean }) {
 export default function ArcadeHeader({
   activeTeam,
   allTeams,
-  isAdmin,
-  onOpenAdmin,
   onGoHome,
+  onLogout,
   isBackendConnected = true,
   gameMeta,
 }: ArcadeHeaderProps) {
@@ -156,17 +154,32 @@ export default function ArcadeHeader({
             <SpeakerIcon muted={isMuted} />
           </button>
 
-          <button
-            type="button"
-            className={`topbar__host${isAdmin ? " is-active" : ""}`}
-            onClick={() => {
-              sound.playClick();
-              onOpenAdmin();
-            }}
-            title="Open the host control panel"
-          >
-            {isAdmin ? "Host console" : "Host panel"}
-          </button>
+          {/* Finish Turn / Give Up & Log Out button when on hub */}
+          {!gameMeta && onLogout && (
+            <button
+              type="button"
+              className="topbar__icon-btn"
+              onClick={() => {
+                sound.playClick();
+                onLogout();
+              }}
+              title="Finish turn or give up and return to Enter Username screen"
+              style={{
+                width: "auto",
+                padding: "0 0.85rem",
+                fontSize: "0.8rem",
+                fontWeight: 800,
+                fontFamily: "var(--font-mono)",
+                background: "var(--paper)",
+                border: "2px solid var(--ink)",
+                borderRadius: "10px",
+                color: "var(--ink)",
+                cursor: "pointer",
+              }}
+            >
+              Finish / Give Up
+            </button>
+          )}
         </div>
       </div>
     </header>

@@ -9,8 +9,12 @@ import NameThatTune from "@/components/games/NameThatTune";
 import Categories from "@/components/games/Categories";
 import ReverseMillionaire from "@/components/games/ReverseMillionaire";
 import OfflineArena from "@/components/games/OfflineArena";
-import AdminPanel from "@/components/admin/AdminPanel";
 import CelebrationModal from "@/components/modals/CelebrationModal";
+import ConfirmLogoutModal from "@/components/modals/ConfirmLogoutModal";
+import GameLaunchLoader from "@/components/transitions/GameLaunchLoader";
+import ArcadeBootLoader from "@/components/transitions/ArcadeBootLoader";
+import LoginGateway from "@/components/auth/LoginGateway";
+import "@/styles/game-loader.css";
 import {
   TeamScore,
   DEFAULT_TEAMS,
@@ -22,16 +26,20 @@ import {
   setStoredAdminAuth,
   fetchBackendTournamentState,
   submitPlayerGameResult,
+  selectOrCreateTeam,
 } from "@/lib/tournamentState";
 import { sound } from "@/lib/audio";
 
 export default function ArcadePage() {
-  const [teams, setTeams] = useState<TeamScore[]>(DEFAULT_TEAMS);
-  const [activeTeamName, setActiveTeamName] = useState<string>("Team Alpha");
-  const [currentView, setCurrentView] = useState<string>("hub");
+  const [teams, setTeams] = useState<TeamScore[]>([]);
+  const [activeTeamName, setActiveTeamName] = useState<string>("");
+  const [currentView, setCurrentView] = useState<string>("login");
   const [isClient, setIsClient] = useState(false);
+  const [isAppLoading, setIsAppLoading] = useState(true);
   const [isBackendConnected, setIsBackendConnected] = useState(true);
   const [adminPin, setAdminPin] = useState<string | null>(null);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [launchingGameId, setLaunchingGameId] = useState<string | null>(null);
 
   // Celebration modal state
   const [celebrationData, setCelebrationData] = useState<{
@@ -56,17 +64,34 @@ export default function ArcadePage() {
   // Initial load
   const loadState = useCallback(async () => {
     const localTeams = getStoredTeams();
-    const localActive = getStoredActiveTeam();
     const storedAuth = getStoredAdminAuth();
     setTeams(localTeams);
-    setActiveTeamName(localActive);
     setAdminPin(storedAuth);
+
+    const storedSessionUser =
+      typeof window !== "undefined" ? sessionStorage.getItem("epc_active_session_user") : null;
+
+    if (storedSessionUser) {
+      setActiveTeamName(storedSessionUser);
+      setCurrentView("hub");
+    } else {
+      setActiveTeamName("");
+      setCurrentView("login");
+    }
 
     // Fetch from backend API
     const backendData = await fetchBackendTournamentState();
     if (backendData) {
       setTeams(backendData.teams);
-      setActiveTeamName(backendData.activeTeam);
+      if (backendData.activeTeam) {
+        setActiveTeamName(backendData.activeTeam);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("epc_active_session_user", backendData.activeTeam);
+        }
+        setCurrentView("hub");
+      } else if (storedSessionUser) {
+        setActiveTeamName(storedSessionUser);
+      }
       setIsBackendConnected(true);
     } else {
       setIsBackendConnected(false);
@@ -75,69 +100,127 @@ export default function ArcadePage() {
 
   useEffect(() => {
     setIsClient(true);
-    loadState();
+    const startTime = Date.now();
 
-    // Periodic sync poll every 6s for live multi-screen synchronization
+    loadState().finally(() => {
+      const elapsed = Date.now() - startTime;
+      const minDisplay = 800; // Guarantee retro arcade loader is visible on initial load / refresh!
+      const delay = Math.max(0, minDisplay - elapsed);
+      setTimeout(() => {
+        setIsAppLoading(false);
+      }, delay);
+    });
+
+    // Periodic sync poll every 2.5s for real-time live host score evaluation & active team sync
     const pollInterval = setInterval(() => {
       fetchBackendTournamentState().then((backendData) => {
         if (backendData) {
           setTeams(backendData.teams);
-          setActiveTeamName(backendData.activeTeam);
+          if (backendData.activeTeam) {
+            setActiveTeamName(backendData.activeTeam);
+            if (typeof window !== "undefined") {
+              sessionStorage.setItem("epc_active_session_user", backendData.activeTeam);
+            }
+          }
           setIsBackendConnected(true);
         }
       });
-    }, 6000);
+    }, 2500);
 
     return () => clearInterval(pollInterval);
   }, [loadState]);
 
-  const activeTeam = teams.find((t) => t.name === activeTeamName) || teams[0] || DEFAULT_TEAMS[0];
+  const activeTeam: TeamScore = teams.find((t) => t.name === activeTeamName) || {
+    name: activeTeamName || "Player",
+    greenerGrass: 0,
+    realHeadline: 0,
+    nameThatTune: 0,
+    categories: 0,
+    reverseMillionaire: 0,
+    offlineGame: 0,
+    total: 0,
+    lastUpdated: 0,
+  };
 
   const handleAdminAuth = (pin: string | null) => {
     setAdminPin(pin);
     setStoredAdminAuth(pin);
   };
 
+  const handleLaunchComplete = useCallback((targetGameId: string) => {
+    setLaunchingGameId(null);
+    if (targetGameId === "arena-hub") {
+      setCurrentView("hub");
+    } else {
+      setCurrentView(targetGameId);
+    }
+  }, []);
+
+  const handleEnterArena = async (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setActiveTeamName(trimmed);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("epc_active_session_user", trimmed);
+    }
+    setCurrentView("hub");
+    const result = await selectOrCreateTeam(trimmed);
+    if (result) {
+      setTeams(result.teams);
+      setActiveTeamName(result.activeTeam);
+    }
+  };
+
+  const handleLogout = () => {
+    sound.playClick();
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("epc_active_session_user");
+    }
+    setActiveGameMeta(null);
+    setIsLogoutModalOpen(false);
+    setCurrentView("login");
+  };
+
   // Legit Player Completion of a Game Round
+  // Legit Player Completion of a Game Round (Host evaluates & awards points from Admin)
   const handleGameFinish = async (
     gameKey: keyof Omit<TeamScore, "name" | "total" | "lastUpdated">,
     title: string,
     score: number
   ) => {
-    const updated = teams.map((team) => {
-      if (team.name === activeTeam.name) {
-        const newScore = Math.max(team[gameKey], score);
-        const newTotal =
-          (gameKey === "greenerGrass" ? newScore : team.greenerGrass) +
-          (gameKey === "realHeadline" ? newScore : team.realHeadline) +
-          (gameKey === "nameThatTune" ? newScore : team.nameThatTune) +
-          (gameKey === "categories" ? newScore : team.categories) +
-          (gameKey === "reverseMillionaire" ? newScore : team.reverseMillionaire) +
-          (gameKey === "offlineGame" ? newScore : team.offlineGame);
+    if (score > 0) {
+      const updated = teams.map((team) => {
+        if (team.name === activeTeam.name) {
+          const newScore = Math.max(team[gameKey], score);
+          const newTotal =
+            (gameKey === "greenerGrass" ? newScore : team.greenerGrass) +
+            (gameKey === "realHeadline" ? newScore : team.realHeadline) +
+            (gameKey === "nameThatTune" ? newScore : team.nameThatTune) +
+            (gameKey === "categories" ? newScore : team.categories) +
+            (gameKey === "reverseMillionaire" ? newScore : team.reverseMillionaire) +
+            (gameKey === "offlineGame" ? newScore : team.offlineGame);
 
-        return {
-          ...team,
-          [gameKey]: newScore,
-          total: newTotal,
-          lastUpdated: Date.now(),
-        };
-      }
-      return team;
-    });
+          return {
+            ...team,
+            [gameKey]: newScore,
+            total: newTotal,
+            lastUpdated: Date.now(),
+          };
+        }
+        return team;
+      });
 
-    setTeams(updated);
-    saveStoredTeams(updated);
+      setTeams(updated);
+      saveStoredTeams(updated);
+      await submitPlayerGameResult(activeTeam.name, gameKey, score);
+    }
 
-    const updatedActive = updated.find((t) => t.name === activeTeam.name);
     setCelebrationData({
       isOpen: true,
       gameTitle: title,
       pointsEarned: score,
-      newTotal: updatedActive ? updatedActive.total : 0,
+      newTotal: activeTeam.total,
     });
-
-    // Sync legitimate game result to backend API
-    await submitPlayerGameResult(activeTeam.name, gameKey, score);
   };
 
   const handleCloseCelebration = () => {
@@ -146,8 +229,20 @@ export default function ArcadePage() {
     setCurrentView("hub");
   };
 
-  if (!isClient) {
-    return null;
+  if (!isClient || isAppLoading) {
+    return <ArcadeBootLoader />;
+  }
+
+  // VIEW: ENTER USERNAME GATEWAY
+  if (currentView === "login") {
+    return (
+      <div className="view-transition-wrap">
+        <LoginGateway
+          allTeams={teams}
+          onEnterArena={handleEnterArena}
+        />
+      </div>
+    );
   }
 
   return (
@@ -155,48 +250,30 @@ export default function ArcadePage() {
       <ArcadeHeader
         activeTeam={activeTeam}
         allTeams={teams}
-        isAdmin={!!adminPin}
-        onOpenAdmin={() => {
-          sound.playClick();
-          setCurrentView("admin");
-        }}
         onGoHome={() => {
           sound.playClick();
           setActiveGameMeta(null);
           setCurrentView("hub");
         }}
+        onLogout={() => setIsLogoutModalOpen(true)}
         isBackendConnected={isBackendConnected}
         gameMeta={activeGameMeta}
       />
 
       <main className="arcade-main">
-        {/* VIEW: ARCADE HUB */}
-        {currentView === "hub" && (
-          <ArcadeHub
-            activeTeam={activeTeam}
-            allTeams={teams}
-            onSelectGame={(gameId) => {
-              setActiveGameMeta(null);
-              setCurrentView(gameId);
-            }}
-          />
-        )}
-
-        {/* VIEW: PROTECTED ADMIN PANEL */}
-        {currentView === "admin" && (
-          <AdminPanel
-            teams={teams}
-            activeTeamName={activeTeamName}
-            adminPin={adminPin}
-            onAdminAuth={handleAdminAuth}
-            onRefresh={loadState}
-            onClose={() => {
-              sound.playClick();
-              setActiveGameMeta(null);
-              setCurrentView("hub");
-            }}
-          />
-        )}
+        <div key={currentView} className="view-transition-wrap">
+          {/* VIEW: ARCADE HUB */}
+          {currentView === "hub" && (
+            <ArcadeHub
+              activeTeam={activeTeam}
+              allTeams={teams}
+              onSelectGame={(gameId) => {
+                setActiveGameMeta(null);
+                setLaunchingGameId(gameId);
+              }}
+              onLogout={() => setIsLogoutModalOpen(true)}
+            />
+          )}
 
         {/* GAME 1: GREENER GRASS */}
         {currentView === "greener-grass" && (
@@ -278,7 +355,7 @@ export default function ArcadePage() {
           />
         )}
 
-        {/* GAME 6: OFFLINE ARENA */}
+        {/* GAME 6: BULLSEYE (LIVE ARENA) */}
         {currentView === "offline" && (
           <OfflineArena
             currentScore={activeTeam.offlineGame}
@@ -286,20 +363,17 @@ export default function ArcadePage() {
             adminPin={adminPin}
             onFinish={(score) => {
               setActiveGameMeta(null);
-              handleGameFinish("offlineGame", "Offline Live Arena", score);
+              handleGameFinish("offlineGame", "Bullseye: Darts & Archery Arena", score);
             }}
             onBack={() => {
               sound.playClick();
               setActiveGameMeta(null);
               setCurrentView("hub");
             }}
-            onOpenAdmin={() => {
-              sound.playClick();
-              setCurrentView("admin");
-            }}
             onUpdateMeta={setActiveGameMeta}
           />
         )}
+        </div>
       </main>
 
       <CelebrationModal
@@ -309,6 +383,25 @@ export default function ArcadePage() {
         newTotal={celebrationData.newTotal}
         onClose={handleCloseCelebration}
       />
+
+      <ConfirmLogoutModal
+        isOpen={isLogoutModalOpen}
+        teamName={activeTeam.name}
+        totalScore={activeTeam.total}
+        onConfirm={handleLogout}
+        onCancel={() => {
+          sound.playClick();
+          setIsLogoutModalOpen(false);
+        }}
+      />
+
+      {launchingGameId && (
+        <GameLaunchLoader
+          gameId={launchingGameId}
+          teamName={activeTeam.name}
+          onComplete={handleLaunchComplete}
+        />
+      )}
     </div>
   );
 }

@@ -3,24 +3,27 @@
    ===================================================================== */
 
 .topbar {
-  --stage: #25226f;
-  --stage-2: #1c1a58;
-  --ink: #16133f;
+  --stage: #1d0a3d;
+  --stage-2: #14072c;
+  --ink: #0d041c;
   --paper: #ffffff;
-  --on-stage: #f3f2ff;
-  --muted-stage: #b8b5ec;
-  --muted-paper: #5a5684;
-  --c-sun: #ffc93c;
-  --c-grass: #3dd68c;
-  --c-coin: #ffa23a;
+  --on-stage: #f8f6ff;
+  --muted-stage: #c8b8ec;
+  --muted-paper: #5d4680;
+  --c-sun: #f5af19;
+  --c-grass: #10b981;
+  --c-coin: #f59e0b;
 
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--stage-2);
+  background: rgba(20, 7, 44, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   color: var(--on-stage);
   font-family: var(--font-hub), ui-sans-serif, system-ui, sans-serif;
-  box-shadow: 0 4px 0 var(--ink);
+  border-bottom: 2.5px solid var(--gold-primary);
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.5), 0 0 16px rgba(245, 175, 25, 0.25);
 }
 
 .topbar *,
@@ -48,15 +51,15 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 0.85rem;
+  padding: 0.45rem 0.95rem;
   border-radius: 12px;
-  background: var(--paper);
-  color: var(--ink);
+  background: #fffdf5;
+  color: #0d041c;
   font: inherit;
   font-weight: 800;
   font-size: 0.88rem;
-  box-shadow: 3px 3px 0 var(--c-sun);
-  border: 0;
+  border: 2px solid var(--gold-primary);
+  box-shadow: 3px 3px 0 var(--gold-dark), 0 0 10px rgba(245, 175, 25, 0.25);
   cursor: pointer;
   white-space: nowrap;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
@@ -64,13 +67,13 @@
 
 .topbar__back-btn:hover {
   transform: translate(-1px, -1px);
-  box-shadow: 4px 4px 0 var(--c-sun);
-  background: var(--c-sun);
+  box-shadow: 4px 4px 0 var(--gold-dark), 0 0 16px rgba(255, 215, 0, 0.5);
+  background: var(--gold-gradient);
 }
 
 .topbar__back-btn:active {
   transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 var(--c-sun);
+  box-shadow: 1px 1px 0 var(--gold-dark);
 }
 
 .topbar__back-icon {
@@ -108,18 +111,21 @@
 
 .topbar__logo {
   display: inline-block;
-  padding: 0.25em 0.65em;
-  border-radius: 8px;
-  background: var(--c-sun);
-  color: var(--ink);
-  font-weight: 800;
+  padding: 0.28em 0.7em;
+  border-radius: 10px;
+  background: var(--gold-gradient);
+  color: #0d041c;
+  font-weight: 900;
   white-space: nowrap;
   transform: rotate(-3deg);
-  transition: transform 0.15s ease;
+  border: 2px solid #ffe082;
+  box-shadow: 2px 2px 0 var(--gold-dark), 0 0 12px rgba(245, 175, 25, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .topbar__brand:hover .topbar__logo {
-  transform: rotate(0deg) scale(1.04);
+  transform: rotate(0deg) scale(1.05);
+  box-shadow: 3px 3px 0 var(--gold-dark), 0 0 18px rgba(255, 215, 0, 0.6);
 }
 
 .topbar__brand-text {
@@ -129,15 +135,17 @@
 
 .topbar__name {
   font-size: 1.05rem;
-  font-weight: 800;
+  font-weight: 900;
   letter-spacing: -0.01em;
   white-space: nowrap;
+  color: var(--on-stage);
+  text-shadow: 0 0 10px rgba(245, 175, 25, 0.3);
 }
 
 .topbar__sub {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--muted-stage);
+  color: var(--gold-light);
   white-space: nowrap;
 }
 
@@ -148,11 +156,12 @@
   justify-self: center;
   width: 100%;
   max-width: 380px;
-  padding: 0.55rem 0.9rem 0.65rem;
-  background: var(--paper);
+  padding: 0.55rem 0.95rem 0.65rem;
+  background: #fffdf5;
   color: var(--ink);
-  border-radius: 14px;
-  box-shadow: 4px 4px 0 var(--c-sun);
+  border-radius: 16px;
+  border: 2px solid var(--gold-primary);
+  box-shadow: 4px 4px 0 var(--gold-dark), 0 0 14px rgba(245, 175, 25, 0.25);
 }
 
 .topbar__meter-labels {
@@ -162,7 +171,7 @@
   gap: 0.75rem;
   margin-bottom: 0.4rem;
   font-size: 0.85rem;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .topbar__meter-labels > span:first-child {
@@ -174,11 +183,14 @@
 
 .topbar__rank {
   margin-left: 0.45rem;
-  padding: 0.05rem 0.45rem;
+  padding: 0.1rem 0.5rem;
   border-radius: 999px;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--gold-gradient);
+  color: #0d041c;
+  font-weight: 900;
   font-size: 0.72rem;
+  border: 1.5px solid #ffe082;
+  box-shadow: 1px 1px 0 var(--gold-dark);
 }
 
 .topbar__meter-val {
@@ -189,21 +201,23 @@
 
 .topbar__meter-val strong {
   font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--ink);
+  font-weight: 900;
+  color: #0d041c;
 }
 
 .topbar__track {
-  height: 8px;
+  height: 9px;
   border-radius: 999px;
-  background: rgba(22, 19, 63, 0.1);
+  background: rgba(13, 4, 28, 0.12);
+  border: 1px solid rgba(245, 175, 25, 0.3);
   overflow: hidden;
 }
 
 .topbar__fill {
   height: 100%;
   border-radius: 999px;
-  background: var(--ink);
+  background: var(--gold-sheen);
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.7);
   transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 

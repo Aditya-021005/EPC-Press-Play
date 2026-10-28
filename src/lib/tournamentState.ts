@@ -10,52 +10,7 @@ export interface TeamScore {
   lastUpdated: number;
 }
 
-export const DEFAULT_TEAMS: TeamScore[] = [
-  {
-    name: "Team Alpha",
-    greenerGrass: 0,
-    realHeadline: 0,
-    nameThatTune: 0,
-    categories: 0,
-    reverseMillionaire: 0,
-    offlineGame: 0,
-    total: 0,
-    lastUpdated: Date.now(),
-  },
-  {
-    name: "Team Bravo",
-    greenerGrass: 0,
-    realHeadline: 0,
-    nameThatTune: 0,
-    categories: 0,
-    reverseMillionaire: 0,
-    offlineGame: 0,
-    total: 0,
-    lastUpdated: Date.now(),
-  },
-  {
-    name: "Team Charlie",
-    greenerGrass: 0,
-    realHeadline: 0,
-    nameThatTune: 0,
-    categories: 0,
-    reverseMillionaire: 0,
-    offlineGame: 0,
-    total: 0,
-    lastUpdated: Date.now(),
-  },
-  {
-    name: "Solo Champion",
-    greenerGrass: 0,
-    realHeadline: 0,
-    nameThatTune: 0,
-    categories: 0,
-    reverseMillionaire: 0,
-    offlineGame: 0,
-    total: 0,
-    lastUpdated: Date.now(),
-  },
-];
+export const DEFAULT_TEAMS: TeamScore[] = [];
 
 export const STORAGE_KEY_TEAMS = "epc_tournament_teams_v1";
 export const STORAGE_KEY_ACTIVE = "epc_tournament_active_team_v1";
@@ -66,17 +21,17 @@ export function cleanTeamName(name: string): string {
 }
 
 export function getStoredTeams(): TeamScore[] {
-  if (typeof window === "undefined") return DEFAULT_TEAMS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY_TEAMS);
-    if (!raw) return DEFAULT_TEAMS;
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed.map((t: TeamScore) => ({ ...t, name: cleanTeamName(t.name) }));
     }
-    return DEFAULT_TEAMS;
+    return [];
   } catch {
-    return DEFAULT_TEAMS;
+    return [];
   }
 }
 
@@ -90,9 +45,9 @@ export function saveStoredTeams(teams: TeamScore[]) {
 }
 
 export function getStoredActiveTeam(): string {
-  if (typeof window === "undefined") return "Team Alpha";
+  if (typeof window === "undefined") return "";
   const stored = localStorage.getItem(STORAGE_KEY_ACTIVE);
-  return stored ? cleanTeamName(stored) : "Team Alpha";
+  return stored ? cleanTeamName(stored) : "";
 }
 
 export function saveStoredActiveTeam(teamName: string) {
@@ -262,3 +217,54 @@ export async function adminResetTournament(pin: string) {
     return false;
   }
 }
+
+// Single-Laptop Event Action: Select or Register Active Team
+export async function selectOrCreateTeam(teamName: string): Promise<{
+  activeTeam: string;
+  teams: TeamScore[];
+} | null> {
+  const cleanName = cleanTeamName(teamName);
+  saveStoredActiveTeam(cleanName);
+
+  try {
+    const res = await fetch("/api/tournament", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "selectOrCreateTeam",
+        teamName: cleanName,
+      }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        saveStoredTeams(json.data.teams);
+        saveStoredActiveTeam(json.data.activeTeam);
+        return json.data;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not sync team to backend, using local fallback:", err);
+  }
+
+  // Local fallback
+  const localTeams = getStoredTeams();
+  let existing = localTeams.find((t) => t.name.toLowerCase() === cleanName.toLowerCase());
+  if (!existing) {
+    existing = {
+      name: cleanName,
+      greenerGrass: 0,
+      realHeadline: 0,
+      nameThatTune: 0,
+      categories: 0,
+      reverseMillionaire: 0,
+      offlineGame: 0,
+      total: 0,
+      lastUpdated: Date.now(),
+    };
+    localTeams.push(existing);
+    saveStoredTeams(localTeams);
+  }
+  return { activeTeam: cleanName, teams: localTeams };
+}
+

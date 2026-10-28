@@ -27,55 +27,10 @@ interface TournamentState {
 }
 
 const DEFAULT_STATE: TournamentState = {
-  activeTeam: "Team Alpha",
+  activeTeam: "",
   adminPin: "1234",
   lockedGames: [],
-  teams: [
-    {
-      name: "Team Alpha",
-      greenerGrass: 0,
-      realHeadline: 0,
-      nameThatTune: 0,
-      categories: 0,
-      reverseMillionaire: 0,
-      offlineGame: 0,
-      total: 0,
-      lastUpdated: Date.now(),
-    },
-    {
-      name: "Team Bravo",
-      greenerGrass: 0,
-      realHeadline: 0,
-      nameThatTune: 0,
-      categories: 0,
-      reverseMillionaire: 0,
-      offlineGame: 0,
-      total: 0,
-      lastUpdated: Date.now(),
-    },
-    {
-      name: "Team Charlie",
-      greenerGrass: 0,
-      realHeadline: 0,
-      nameThatTune: 0,
-      categories: 0,
-      reverseMillionaire: 0,
-      offlineGame: 0,
-      total: 0,
-      lastUpdated: Date.now(),
-    },
-    {
-      name: "Solo Champion",
-      greenerGrass: 0,
-      realHeadline: 0,
-      nameThatTune: 0,
-      categories: 0,
-      reverseMillionaire: 0,
-      offlineGame: 0,
-      total: 0,
-      lastUpdated: Date.now(),
-    },
-  ],
+  teams: [],
   version: 1,
 };
 
@@ -166,6 +121,32 @@ export async function POST(req: Request) {
         const current = (team as unknown as Record<string, number>)[gameKey] || 0;
         (team as unknown as Record<string, number>)[gameKey] = Math.max(current, val);
         recalcTotal(team);
+        state.version++;
+        saveTournamentState(state);
+      }
+      return NextResponse.json({ success: true, data: state });
+    }
+
+    // 3. Public Participant Action: Select or Register Team on the single laptop
+    if (body.action === "selectOrCreateTeam" && body.teamName) {
+      const name = String(body.teamName).trim();
+      if (name) {
+        let existing = state.teams.find((t) => t.name.toLowerCase() === name.toLowerCase());
+        if (!existing) {
+          existing = {
+            name,
+            greenerGrass: 0,
+            realHeadline: 0,
+            nameThatTune: 0,
+            categories: 0,
+            reverseMillionaire: 0,
+            offlineGame: 0,
+            total: 0,
+            lastUpdated: Date.now(),
+          };
+          state.teams.push(existing);
+        }
+        state.activeTeam = existing.name;
         state.version++;
         saveTournamentState(state);
       }

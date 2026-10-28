@@ -37,16 +37,21 @@ export const metadata: Metadata = {
   description: "Experience Press Play: The Game Room - an electrifying 6-game tournament featuring Greener Grass, Real Headline or Not, Name That Tune, Categories, and Reverse Millionaire.",
 };
 
+import ArabianBackground from "@/components/layout/ArabianBackground";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} ${spaceGrotesk.variable} ${hubFont.variable}`}>
-      <body>
-        <div className="app-bg-glow" />
-        <div className="grid-overlay" />
+    <html
+      lang="en"
+      className={`${outfit.variable} ${spaceGrotesk.variable} ${hubFont.variable}`}
+      suppressHydrationWarning
+    >
+      <body suppressHydrationWarning>
+        <ArabianBackground />
         {children}
       </body>
     </html>
