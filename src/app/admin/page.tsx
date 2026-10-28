@@ -7,6 +7,7 @@ import {
   TeamScore,
   DEFAULT_TEAMS,
   getStoredTeams,
+  saveStoredTeams,
   getStoredAdminAuth,
   setStoredAdminAuth,
   fetchBackendTournamentState,
@@ -32,13 +33,14 @@ export default function AdminRoutePage() {
     const backendData = await fetchBackendTournamentState();
     if (backendData) {
       setTeams(backendData.teams);
+      saveStoredTeams(backendData.teams);
       if (backendData.activeTeam) {
         setActiveTeamName(backendData.activeTeam);
         if (typeof window !== "undefined") {
           sessionStorage.setItem("epc_active_session_user", backendData.activeTeam);
         }
-      } else if (sessionUser) {
-        setActiveTeamName(sessionUser);
+      } else {
+        setActiveTeamName("");
       }
     } else if (sessionUser) {
       setActiveTeamName(sessionUser);
@@ -54,8 +56,11 @@ export default function AdminRoutePage() {
       fetchBackendTournamentState().then((backendData) => {
         if (backendData) {
           setTeams(backendData.teams);
+          saveStoredTeams(backendData.teams);
           if (backendData.activeTeam) {
             setActiveTeamName(backendData.activeTeam);
+          } else {
+            setActiveTeamName("");
           }
         }
       });

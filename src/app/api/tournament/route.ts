@@ -1,70 +1,11 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-
-// File storage path for persistent backend
-const DATA_DIR = path.join(process.cwd(), "data");
-const DATA_FILE = path.join(DATA_DIR, "tournament.json");
-
-interface TeamScore {
-  name: string;
-  greenerGrass: number;
-  realHeadline: number;
-  nameThatTune: number;
-  categories: number;
-  reverseMillionaire: number;
-  offlineGame: number;
-  total: number;
-  lastUpdated: number;
-}
-
-interface TournamentState {
-  activeTeam: string;
-  adminPin: string;
-  lockedGames: string[];
-  teams: TeamScore[];
-  version: number;
-}
-
-const DEFAULT_STATE: TournamentState = {
-  activeTeam: "",
-  adminPin: "1234",
-  lockedGames: [],
-  teams: [],
-  version: 1,
-};
-
-let memoryState: TournamentState = { ...DEFAULT_STATE };
-
-function loadTournamentState(): TournamentState {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const raw = fs.readFileSync(DATA_FILE, "utf-8");
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.teams)) {
-        if (!parsed.adminPin) parsed.adminPin = "1234";
-        if (!parsed.lockedGames) parsed.lockedGames = [];
-        memoryState = parsed;
-        return parsed;
-      }
-    }
-  } catch (err) {
-    console.warn("Could not read tournament data file, falling back to memory:", err);
-  }
-  return memoryState;
-}
-
-function saveTournamentState(state: TournamentState) {
-  memoryState = state;
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2), "utf-8");
-  } catch (err) {
-    console.warn("Could not write tournament data file, kept in memory:", err);
-  }
-}
+import {
+  TeamScore,
+  TournamentState,
+  loadTournamentState,
+  saveTournamentState,
+  isUsingRedis,
+} from "@/lib/serverStorage";
 
 // Helper to recalculate total
 function recalcTotal(team: TeamScore) {
@@ -82,7 +23,7 @@ function recalcTotal(team: TeamScore) {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const pin = url.searchParams.get("pin");
-  const state = loadTournamentState();
+  const state = await loadTournamentState();
 
   const isAdmin = pin === state.adminPin;
 
@@ -95,6 +36,7 @@ export async function GET(req: Request) {
       version: state.version,
       isAdmin,
     },
+    isRedis: isUsingRedis(),
     timestamp: Date.now(),
   });
 }
@@ -103,7 +45,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const state = loadTournamentState();
+    const state = await loadTournamentState();
 
     // 1. Admin Verification
     if (body.action === "verifyPin") {
@@ -122,12 +64,12 @@ export async function POST(req: Request) {
         (team as unknown as Record<string, number>)[gameKey] = Math.max(current, val);
         recalcTotal(team);
         state.version++;
-        saveTournamentState(state);
+        await saveTournamentState(state);
       }
       return NextResponse.json({ success: true, data: state });
     }
 
-    // 3. Public Participant Action: Select or Register Team on the single laptop
+    // 3. Public Participant Action: Select or Register Team
     if (body.action === "selectOrCreateTeam" && body.teamName) {
       const name = String(body.teamName).trim();
       if (name) {
@@ -148,7 +90,7 @@ export async function POST(req: Request) {
         }
         state.activeTeam = existing.name;
         state.version++;
-        saveTournamentState(state);
+        await saveTournamentState(state);
       }
       return NextResponse.json({ success: true, data: state });
     }
@@ -163,7 +105,7 @@ export async function POST(req: Request) {
     if (body.action === "adminSetActiveTeam" && body.teamName) {
       state.activeTeam = body.teamName;
       state.version++;
-      saveTournamentState(state);
+      await saveTournamentState(state);
       return NextResponse.json({ success: true, data: state });
     }
 
@@ -184,19 +126,29 @@ export async function POST(req: Request) {
         });
         state.activeTeam = name;
         state.version++;
-        saveTournamentState(state);
+        await saveTournamentState(state);
       }
       return NextResponse.json({ success: true, data: state });
     }
 
     // Admin: Delete Team
     if (body.action === "adminDeleteTeam" && body.teamName) {
-      state.teams = state.teams.filter((t) => t.name !== body.teamName);
-      if (state.activeTeam === body.teamName && state.teams.length > 0) {
-        state.activeTeam = state.teams[0].name;
+      const targetName = String(body.teamName).trim().toLowerCase();
+      state.teams = state.teams.filter((t) => t.name.trim().toLowerCase() !== targetName);
+      if (state.activeTeam.trim().toLowerCase() === targetName) {
+        state.activeTeam = state.teams.length > 0 ? state.teams[0].name : "";
       }
       state.version++;
-      saveTournamentState(state);
+      await saveTournamentState(state);
+      return NextResponse.json({ success: true, data: state });
+    }
+
+    // Admin: Wipe All Teams (Empty Entire Roster)
+    if (body.action === "adminWipeAllTeams") {
+      state.teams = [];
+      state.activeTeam = "";
+      state.version++;
+      await saveTournamentState(state);
       return NextResponse.json({ success: true, data: state });
     }
 
@@ -209,33 +161,38 @@ export async function POST(req: Request) {
         (team as unknown as Record<string, number>)[gameKey] = val;
         recalcTotal(team);
         state.version++;
-        saveTournamentState(state);
+        await saveTournamentState(state);
       }
       return NextResponse.json({ success: true, data: state });
     }
 
-    // Admin: Reset Tournament
+    // Admin: Reset Tournament (Scores to 0 or Full Wipe)
     if (body.action === "adminResetTournament") {
-      state.teams = state.teams.map((t) => ({
-        ...t,
-        greenerGrass: 0,
-        realHeadline: 0,
-        nameThatTune: 0,
-        categories: 0,
-        reverseMillionaire: 0,
-        offlineGame: 0,
-        total: 0,
-        lastUpdated: Date.now(),
-      }));
+      if (body.wipeRoster === true) {
+        state.teams = [];
+        state.activeTeam = "";
+      } else {
+        state.teams = state.teams.map((t) => ({
+          ...t,
+          greenerGrass: 0,
+          realHeadline: 0,
+          nameThatTune: 0,
+          categories: 0,
+          reverseMillionaire: 0,
+          offlineGame: 0,
+          total: 0,
+          lastUpdated: Date.now(),
+        }));
+      }
       state.version++;
-      saveTournamentState(state);
+      await saveTournamentState(state);
       return NextResponse.json({ success: true, data: state });
     }
 
     // Admin: Change PIN
     if (body.action === "adminChangePin" && body.newPin) {
       state.adminPin = String(body.newPin).trim();
-      saveTournamentState(state);
+      await saveTournamentState(state);
       return NextResponse.json({ success: true, message: "PIN updated" });
     }
 

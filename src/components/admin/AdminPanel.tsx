@@ -9,6 +9,7 @@ import {
   adminAddTeam,
   adminDeleteTeam,
   adminResetTournament,
+  adminWipeAllTeams,
 } from "@/lib/tournamentState";
 import {
   AllGameContent,
@@ -95,6 +96,7 @@ export default function AdminPanel({
   const [saveSuccessMsg, setSaveSuccessMsg] = useState("");
   const [deleteTargetTeam, setDeleteTargetTeam] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetMode, setResetMode] = useState<"scoresOnly" | "wipeAll">("wipeAll");
 
   // Game Content State
   const [gameContent, setGameContent] = useState<AllGameContent>(getDefaultGameContent());
@@ -223,10 +225,17 @@ export default function AdminPanel({
     if (!adminPin || !deleteTargetTeam) return;
 
     sound.playBuzzer();
-    const ok = await adminDeleteTeam(adminPin, deleteTargetTeam);
+    const target = deleteTargetTeam;
+    setDeleteTargetTeam(null);
+    const ok = await adminDeleteTeam(adminPin, target);
     if (ok) {
-      flashMessage(`Deleted team "${deleteTargetTeam}"`);
-      setDeleteTargetTeam(null);
+      if (currentActiveTeam.trim().toLowerCase() === target.trim().toLowerCase()) {
+        setCurrentActiveTeam("");
+      }
+      if (selectedScoringTeam.trim().toLowerCase() === target.trim().toLowerCase()) {
+        setSelectedScoringTeam("");
+      }
+      flashMessage(`Deleted team "${target}" permanently`);
       onRefresh();
     }
   };
@@ -235,11 +244,21 @@ export default function AdminPanel({
     if (!adminPin) return;
 
     sound.playBuzzer();
-    const ok = await adminResetTournament(adminPin);
-    if (ok) {
-      setShowResetConfirm(false);
-      flashMessage("Tournament scores & roster have been completely reset!");
-      onRefresh();
+    setShowResetConfirm(false);
+    if (resetMode === "wipeAll") {
+      const ok = await adminWipeAllTeams(adminPin);
+      if (ok) {
+        setCurrentActiveTeam("");
+        setSelectedScoringTeam("");
+        flashMessage("All teams and scores have been wiped completely!");
+        onRefresh();
+      }
+    } else {
+      const ok = await adminResetTournament(adminPin, false);
+      if (ok) {
+        flashMessage("All tournament scores have been reset to zero!");
+        onRefresh();
+      }
     }
   };
 
@@ -1731,33 +1750,73 @@ export default function AdminPanel({
               </div>
             </div>
 
-            {/* Danger Zone: Full Reset */}
-            <div className="admin-reset-box">
-              <div>
-                <h4 style={{ margin: 0, color: "#991b1b", fontSize: "1.1rem", fontWeight: 900 }}>
-                  DANGER ZONE: FULL TOURNAMENT RESET
-                </h4>
-                <p style={{ margin: "0.3rem 0 0", color: "#7f1d1d", fontSize: "0.88rem" }}>
-                  Wipes all team score history and resets the entire leaderboard back to zero.
-                </p>
+            {/* Danger Zone: Full Reset & Wipeout */}
+            <div className="admin-reset-box" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                <div>
+                  <h4 style={{ margin: 0, color: "#991b1b", fontSize: "1.1rem", fontWeight: 900 }}>
+                    RESET ALL SCORES TO ZERO
+                  </h4>
+                  <p style={{ margin: "0.3rem 0 0", color: "#7f1d1d", fontSize: "0.88rem" }}>
+                    Keeps all registered team names on the roster, but resets every score back to 0.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetMode("scoresOnly");
+                    setShowResetConfirm(true);
+                  }}
+                  style={{
+                    background: "var(--c-sun, #f5af19)",
+                    color: "var(--ink)",
+                    border: "2px solid var(--ink)",
+                    boxShadow: "3px 3px 0 var(--ink)",
+                    borderRadius: "10px",
+                    padding: "0.65rem 1.2rem",
+                    fontWeight: 900,
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  RESET SCORES ONLY
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowResetConfirm(true)}
-                style={{
-                  background: "#b91c1c",
-                  color: "#ffffff",
-                  border: "2px solid #7f1d1d",
-                  borderRadius: "12px",
-                  padding: "0.75rem 1.4rem",
-                  fontWeight: 900,
-                  fontSize: "0.95rem",
-                  cursor: "pointer",
-                }}
-              >
-                RESET TOURNAMENT
-              </button>
+              <div style={{ height: "1px", background: "#fca5a5", margin: "0.4rem 0" }} />
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                <div>
+                  <h4 style={{ margin: 0, color: "#991b1b", fontSize: "1.1rem", fontWeight: 900 }}>
+                    DANGER: WIPE ALL TEAMS & CLEAR ROSTER
+                  </h4>
+                  <p style={{ margin: "0.3rem 0 0", color: "#7f1d1d", fontSize: "0.88rem" }}>
+                    Completely deletes all participants, teams, and scores from the database (empty tournament).
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetMode("wipeAll");
+                    setShowResetConfirm(true);
+                  }}
+                  style={{
+                    background: "#b91c1c",
+                    color: "#ffffff",
+                    border: "2px solid #7f1d1d",
+                    boxShadow: "3px 3px 0 #7f1d1d",
+                    borderRadius: "10px",
+                    padding: "0.65rem 1.2rem",
+                    fontWeight: 900,
+                    fontSize: "0.9rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  WIPE ALL TEAMS & ROSTER
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1789,8 +1848,14 @@ export default function AdminPanel({
         {showResetConfirm && (
           <div className="tourney-modal" role="dialog" aria-modal="true">
             <div className="modal-card">
-              <h2 style={{ color: "#b91c1c" }}>Reset Entire Tournament?</h2>
-              <p>Are you sure? This will wipe all teams and all scores back to an empty slate.</p>
+              <h2 style={{ color: "#b91c1c" }}>
+                {resetMode === "wipeAll" ? "Wipe All Teams & Roster?" : "Reset All Scores to 0?"}
+              </h2>
+              <p>
+                {resetMode === "wipeAll"
+                  ? "Are you sure? This will permanently delete every participant, team, and score from the database."
+                  : "Are you sure? All registered team names will be preserved, but their scores across all 6 games will reset to 0."}
+              </p>
               <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
                 <button type="button" className="btn-secondary-sm" onClick={() => setShowResetConfirm(false)}>
                   Cancel
@@ -1801,7 +1866,7 @@ export default function AdminPanel({
                   style={{ background: "#b91c1c", color: "#fff", borderColor: "#7f1d1d" }}
                   onClick={handleConfirmReset}
                 >
-                  Confirm Reset
+                  {resetMode === "wipeAll" ? "Yes, Wipe All Teams" : "Yes, Reset Scores"}
                 </button>
               </div>
             </div>

@@ -175,7 +175,39 @@ export async function adminDeleteTeam(pin: string, teamName: string) {
         teamName,
       }),
     });
-    return res.ok;
+    if (res.ok) {
+      const json = await res.json();
+      if (json.data && Array.isArray(json.data.teams)) {
+        saveStoredTeams(json.data.teams);
+      }
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+// Admin Action: Wipe All Teams (Clear Roster)
+export async function adminWipeAllTeams(pin: string) {
+  try {
+    const res = await fetch("/api/tournament", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "adminWipeAllTeams",
+        pin,
+      }),
+    });
+    if (res.ok) {
+      saveStoredTeams([]);
+      saveStoredActiveTeam("");
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("epc_active_session_user");
+      }
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -201,8 +233,8 @@ export async function adminOverrideScore(pin: string, teamName: string, gameKey:
   }
 }
 
-// Admin Action: Reset Tournament
-export async function adminResetTournament(pin: string) {
+// Admin Action: Reset Tournament (Scores to 0 or Full Wipe)
+export async function adminResetTournament(pin: string, wipeRoster = false) {
   try {
     const res = await fetch("/api/tournament", {
       method: "POST",
@@ -210,9 +242,24 @@ export async function adminResetTournament(pin: string) {
       body: JSON.stringify({
         action: "adminResetTournament",
         pin,
+        wipeRoster,
       }),
     });
-    return res.ok;
+    if (res.ok) {
+      const json = await res.json();
+      if (json.data && Array.isArray(json.data.teams)) {
+        saveStoredTeams(json.data.teams);
+      }
+      if (wipeRoster) {
+        saveStoredTeams([]);
+        saveStoredActiveTeam("");
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("epc_active_session_user");
+        }
+      }
+      return true;
+    }
+    return false;
   } catch {
     return false;
   }

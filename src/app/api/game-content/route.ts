@@ -1,63 +1,14 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-import { getDefaultGameContent, AllGameContent } from "@/lib/gameContent";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const CONTENT_FILE = path.join(DATA_DIR, "game_content.json");
-const TOURNAMENT_FILE = path.join(DATA_DIR, "tournament.json");
-
-let memoryContent: AllGameContent = getDefaultGameContent();
-
-function loadAdminPin(): string {
-  try {
-    if (fs.existsSync(TOURNAMENT_FILE)) {
-      const raw = fs.readFileSync(TOURNAMENT_FILE, "utf-8");
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.adminPin) return String(parsed.adminPin).trim();
-    }
-  } catch {}
-  return "1234";
-}
-
-function loadGameContent(): AllGameContent {
-  try {
-    if (fs.existsSync(CONTENT_FILE)) {
-      const raw = fs.readFileSync(CONTENT_FILE, "utf-8");
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.categories)) {
-        memoryContent = {
-          ...getDefaultGameContent(),
-          ...parsed,
-        };
-        return memoryContent;
-      }
-    }
-  } catch (err) {
-    console.warn("Could not read game_content.json, using defaults:", err);
-  }
-
-  // Initialize file if not exists
-  const defaults = getDefaultGameContent();
-  saveGameContent(defaults);
-  return defaults;
-}
-
-function saveGameContent(content: AllGameContent) {
-  memoryContent = content;
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(CONTENT_FILE, JSON.stringify(content, null, 2), "utf-8");
-  } catch (err) {
-    console.error("Failed to write game_content.json:", err);
-  }
-}
+import { getDefaultGameContent } from "@/lib/gameContent";
+import {
+  loadGameContent,
+  saveGameContent,
+  loadTournamentState,
+} from "@/lib/serverStorage";
 
 // GET /api/game-content
 export async function GET() {
-  const content = loadGameContent();
+  const content = await loadGameContent();
   return NextResponse.json({
     success: true,
     data: content,
@@ -69,7 +20,8 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const adminPin = loadAdminPin();
+    const tournament = await loadTournamentState();
+    const adminPin = tournament.adminPin || "1234";
 
     if (String(body.pin).trim() !== adminPin) {
       return NextResponse.json(
@@ -86,7 +38,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const current = loadGameContent();
+    const current = await loadGameContent();
 
     if (section === "categories" && Array.isArray(data)) {
       current.categories = data;
@@ -102,8 +54,8 @@ export async function POST(req: Request) {
       current.bullseye = data;
     } else if (section === "resetAll") {
       const fresh = getDefaultGameContent();
-      fresh.version = current.version + 1;
-      saveGameContent(fresh);
+      fresh.version = (current.version || 1) + 1;
+      await saveGameContent(fresh);
       return NextResponse.json({ success: true, data: fresh });
     } else {
       return NextResponse.json(
@@ -113,7 +65,7 @@ export async function POST(req: Request) {
     }
 
     current.version = (current.version || 1) + 1;
-    saveGameContent(current);
+    await saveGameContent(current);
 
     return NextResponse.json({
       success: true,

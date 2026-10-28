@@ -83,6 +83,7 @@ export default function ArcadePage() {
     const backendData = await fetchBackendTournamentState();
     if (backendData) {
       setTeams(backendData.teams);
+      saveStoredTeams(backendData.teams);
       if (backendData.activeTeam) {
         setActiveTeamName(backendData.activeTeam);
         if (typeof window !== "undefined") {
@@ -116,6 +117,7 @@ export default function ArcadePage() {
       fetchBackendTournamentState().then((backendData) => {
         if (backendData) {
           setTeams(backendData.teams);
+          saveStoredTeams(backendData.teams);
           if (backendData.activeTeam) {
             setActiveTeamName(backendData.activeTeam);
             if (typeof window !== "undefined") {
