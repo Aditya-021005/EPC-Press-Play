@@ -198,9 +198,6 @@ export default function AdminPanel({
     sound.playClick();
     setCurrentActiveTeam(name);
     setSelectedScoringTeam(name);
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("epc_active_session_user", name);
-    }
     const ok = await adminSetActiveTeam(adminPin, name);
     if (ok) {
       flashMessage(`Active team on stage set to: ${name}`);

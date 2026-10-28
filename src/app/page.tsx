@@ -27,6 +27,7 @@ import {
   fetchBackendTournamentState,
   submitPlayerGameResult,
   selectOrCreateTeam,
+  playerLogout,
 } from "@/lib/tournamentState";
 import { sound } from "@/lib/audio";
 
@@ -84,14 +85,23 @@ export default function ArcadePage() {
     if (backendData) {
       setTeams(backendData.teams);
       saveStoredTeams(backendData.teams);
-      if (backendData.activeTeam) {
-        setActiveTeamName(backendData.activeTeam);
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("epc_active_session_user", backendData.activeTeam);
+
+      // Only stay on hub if this browser session has an active logged-in user!
+      // If user finished turn / gave up, never auto-login from backend
+      if (storedSessionUser) {
+        if (backendData.activeTeam) {
+          setActiveTeamName(backendData.activeTeam);
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("epc_active_session_user", backendData.activeTeam);
+          }
+        } else {
+          setActiveTeamName(storedSessionUser);
         }
         setCurrentView("hub");
-      } else if (storedSessionUser) {
-        setActiveTeamName(storedSessionUser);
+      } else {
+        // Clean logged-out state: stay on login gateway screen
+        setActiveTeamName("");
+        setCurrentView("login");
       }
       setIsBackendConnected(true);
     } else {
@@ -118,11 +128,20 @@ export default function ArcadePage() {
         if (backendData) {
           setTeams(backendData.teams);
           saveStoredTeams(backendData.teams);
-          if (backendData.activeTeam) {
-            setActiveTeamName(backendData.activeTeam);
-            if (typeof window !== "undefined") {
-              sessionStorage.setItem("epc_active_session_user", backendData.activeTeam);
+
+          // Only sync active team session if this client is currently logged in!
+          const currentSession =
+            typeof window !== "undefined" ? sessionStorage.getItem("epc_active_session_user") : null;
+          if (currentSession) {
+            if (backendData.activeTeam) {
+              setActiveTeamName(backendData.activeTeam);
+              if (typeof window !== "undefined") {
+                sessionStorage.setItem("epc_active_session_user", backendData.activeTeam);
+              }
             }
+          } else {
+            // Not logged in -> do not resurrect any previous team
+            setActiveTeamName("");
           }
           setIsBackendConnected(true);
         }
@@ -173,27 +192,39 @@ export default function ArcadePage() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     sound.playClick();
+    const teamToLogout = activeTeamName;
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("epc_active_session_user");
     }
+    saveStoredActiveTeam("");
+    setActiveTeamName("");
     setActiveGameMeta(null);
     setIsLogoutModalOpen(false);
     setCurrentView("login");
+
+    // Clear backend / Redis activeTeam so refresh won't resurrect this session
+    await playerLogout(teamToLogout);
   };
 
   // Legit Player Completion of a Game Round
-  // Legit Player Completion of a Game Round (Host evaluates & awards points from Admin)
+  // Legit Player Completion of a Game Round
   const handleGameFinish = async (
     gameKey: keyof Omit<TeamScore, "name" | "total" | "lastUpdated">,
     title: string,
     score: number
   ) => {
-    if (score > 0) {
+    let finalTeamTotal = activeTeam.total;
+
+    if (score >= 0) {
+      const activeNameClean = (activeTeam.name || "").trim().toLowerCase();
+      let found = false;
+
       const updated = teams.map((team) => {
-        if (team.name === activeTeam.name) {
-          const newScore = Math.max(team[gameKey], score);
+        if (team.name.trim().toLowerCase() === activeNameClean) {
+          found = true;
+          const newScore = Math.max(team[gameKey] || 0, score);
           const newTotal =
             (gameKey === "greenerGrass" ? newScore : team.greenerGrass) +
             (gameKey === "realHeadline" ? newScore : team.realHeadline) +
@@ -202,6 +233,7 @@ export default function ArcadePage() {
             (gameKey === "reverseMillionaire" ? newScore : team.reverseMillionaire) +
             (gameKey === "offlineGame" ? newScore : team.offlineGame);
 
+          finalTeamTotal = newTotal;
           return {
             ...team,
             [gameKey]: newScore,
@@ -212,6 +244,22 @@ export default function ArcadePage() {
         return team;
       });
 
+      if (!found && activeTeam.name) {
+        const newTeamObj: TeamScore = {
+          name: activeTeam.name,
+          greenerGrass: gameKey === "greenerGrass" ? score : 0,
+          realHeadline: gameKey === "realHeadline" ? score : 0,
+          nameThatTune: gameKey === "nameThatTune" ? score : 0,
+          categories: gameKey === "categories" ? score : 0,
+          reverseMillionaire: gameKey === "reverseMillionaire" ? score : 0,
+          offlineGame: gameKey === "offlineGame" ? score : 0,
+          total: score,
+          lastUpdated: Date.now(),
+        };
+        updated.push(newTeamObj);
+        finalTeamTotal = score;
+      }
+
       setTeams(updated);
       saveStoredTeams(updated);
       await submitPlayerGameResult(activeTeam.name, gameKey, score);
@@ -221,7 +269,7 @@ export default function ArcadePage() {
       isOpen: true,
       gameTitle: title,
       pointsEarned: score,
-      newTotal: activeTeam.total,
+      newTotal: finalTeamTotal,
     });
   };
 

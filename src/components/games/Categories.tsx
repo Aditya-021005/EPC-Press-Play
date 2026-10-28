@@ -551,7 +551,7 @@ export default function Categories({ onFinish, onBack, onUpdateMeta }: Categorie
                 className="btn-action btn-gold cat-lock-btn"
                 onClick={() => {
                   sound.playSuccess();
-                  onFinish(0);
+                  onFinish(totalScore);
                 }}
               >
                 Return to Arcade Hub

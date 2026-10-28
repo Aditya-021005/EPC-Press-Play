@@ -315,3 +315,33 @@ export async function selectOrCreateTeam(teamName: string): Promise<{
   return { activeTeam: cleanName, teams: localTeams };
 }
 
+// Player Action: Logout / Finish Turn / Give Up
+export async function playerLogout(teamName?: string): Promise<boolean> {
+  saveStoredActiveTeam("");
+  if (typeof window !== "undefined") {
+    sessionStorage.removeItem("epc_active_session_user");
+  }
+  try {
+    const res = await fetch("/api/tournament", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "playerLogout",
+        teamName: teamName || "",
+      }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        saveStoredTeams(json.data.teams);
+        saveStoredActiveTeam("");
+        return true;
+      }
+    }
+    return false;
+  } catch (err) {
+    console.warn("Could not sync logout to backend:", err);
+    return false;
+  }
+}
+

@@ -177,7 +177,7 @@ export default function ReverseMillionaire({ onFinish, onBack, onUpdateMeta }: R
     if (nextCoins === 0 || currentQIndex + 1 >= TOTAL_QUESTIONS) {
       sound.playSuccess();
       confetti({ particleCount: 100, spread: 80 });
-      onFinish(0);
+      onFinish(nextCoins);
     } else {
       setCurrentQIndex((prev) => prev + 1);
       // Default even split of next coins

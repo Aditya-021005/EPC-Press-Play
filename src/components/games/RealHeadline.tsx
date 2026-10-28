@@ -111,7 +111,7 @@ export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHea
       // Completed all 10
       sound.playSuccess();
       confetti({ particleCount: 90, spread: 70 });
-      onFinish(0);
+      onFinish(score);
     }
   };
 

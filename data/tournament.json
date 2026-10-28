@@ -1,7 +1,30 @@
 {
   "activeTeam": "",
-  "teams": [],
-  "version": 29,
+  "teams": [
+    {
+      "name": "hello",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1793212713259
+    },
+    {
+      "name": "PlayerAlpha",
+      "greenerGrass": 0,
+      "realHeadline": 80,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 80,
+      "lastUpdated": 1793214050628
+    }
+  ],
+  "version": 35,
   "adminPin": "1234",
   "lockedGames": []
 }

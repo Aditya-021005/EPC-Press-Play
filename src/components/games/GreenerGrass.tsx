@@ -263,7 +263,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
   const finishGame = (score: number) => {
     sound.playSuccess();
     confetti({ particleCount: 100, spread: 80 });
-    onFinish(0);
+    onFinish(score);
   };
 
   const keyboardRows = [

@@ -27,23 +27,11 @@ export default function AdminRoutePage() {
     setTeams(localTeams);
     setAdminPin(storedAuth);
 
-    const sessionUser =
-      typeof window !== "undefined" ? sessionStorage.getItem("epc_active_session_user") : null;
-
     const backendData = await fetchBackendTournamentState();
     if (backendData) {
       setTeams(backendData.teams);
       saveStoredTeams(backendData.teams);
-      if (backendData.activeTeam) {
-        setActiveTeamName(backendData.activeTeam);
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("epc_active_session_user", backendData.activeTeam);
-        }
-      } else {
-        setActiveTeamName("");
-      }
-    } else if (sessionUser) {
-      setActiveTeamName(sessionUser);
+      setActiveTeamName(backendData.activeTeam || "");
     }
   }, []);
 

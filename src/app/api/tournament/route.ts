@@ -56,7 +56,22 @@ export async function POST(req: Request) {
     // 2. Player Legit Game Finish (Automatic submission from completing a game round)
     if (body.action === "submitGameResult" && body.teamName && body.gameKey) {
       const { teamName, gameKey, score } = body;
-      const team = state.teams.find((t) => t.name === teamName);
+      const cleanName = String(teamName).trim();
+      let team = state.teams.find((t) => t.name.trim().toLowerCase() === cleanName.toLowerCase());
+      if (!team && cleanName) {
+        team = {
+          name: cleanName,
+          greenerGrass: 0,
+          realHeadline: 0,
+          nameThatTune: 0,
+          categories: 0,
+          reverseMillionaire: 0,
+          offlineGame: 0,
+          total: 0,
+          lastUpdated: Date.now(),
+        };
+        state.teams.push(team);
+      }
       if (team) {
         const val = Math.min(100, Math.max(0, parseInt(score, 10) || 0));
         // Keep highest or new score
@@ -89,6 +104,17 @@ export async function POST(req: Request) {
           state.teams.push(existing);
         }
         state.activeTeam = existing.name;
+        state.version++;
+        await saveTournamentState(state);
+      }
+      return NextResponse.json({ success: true, data: state });
+    }
+
+    // 4. Public Participant Action: Player Logout / Finish Turn / Give Up
+    if (body.action === "playerLogout") {
+      const name = String(body.teamName || "").trim();
+      if (!name || state.activeTeam.toLowerCase() === name.toLowerCase()) {
+        state.activeTeam = "";
         state.version++;
         await saveTournamentState(state);
       }
