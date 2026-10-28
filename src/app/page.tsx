@@ -265,17 +265,23 @@ export default function ArcadePage() {
       await submitPlayerGameResult(activeTeam.name, gameKey, score);
     }
 
-    setCelebrationData({
-      isOpen: true,
-      gameTitle: title,
-      pointsEarned: score,
-      newTotal: finalTeamTotal,
-    });
+    if (score > 0) {
+      setCelebrationData({
+        isOpen: true,
+        gameTitle: title,
+        pointsEarned: score,
+        newTotal: finalTeamTotal,
+      });
+    } else {
+      setActiveGameMeta(null);
+      setCurrentView("hub");
+    }
   };
 
   const handleCloseCelebration = () => {
     sound.playClick();
     setCelebrationData((prev) => ({ ...prev, isOpen: false }));
+    setActiveGameMeta(null);
     setCurrentView("hub");
   };
 

@@ -153,8 +153,6 @@ export default function LetterWheelModal({
             }}
           >
             <svg
-              width={wheelSize}
-              height={wheelSize}
               viewBox={`0 0 ${wheelSize} ${wheelSize}`}
               className="wheel-svg"
             >
@@ -260,24 +258,23 @@ export default function LetterWheelModal({
               <div className="wheel-btn-group">
                 <button
                   type="button"
-                  className="btn-action btn-green"
-                  style={{ flex: 1, padding: "0.85rem 1.4rem" }}
+                  className="btn-action btn-green wheel-lock-btn"
                   onClick={() => {
                     sound.playClick();
                     onSelectLetter(landedLetter);
                     onClose();
                   }}
                 >
-                  <FontAwesomeIcon icon={faCheck} style={{ marginRight: "0.5rem" }} />
+                  <FontAwesomeIcon icon={faCheck} style={{ marginRight: "0.4rem" }} />
                   LOCK IN &apos;{landedLetter}&apos; & PLAY
-                  <FontAwesomeIcon icon={faPlay} style={{ marginLeft: "0.5rem" }} />
+                  <FontAwesomeIcon icon={faPlay} style={{ marginLeft: "0.4rem" }} />
                 </button>
                 <button
                   type="button"
-                  className="btn-secondary-sm"
+                  className="btn-secondary-sm wheel-spin-again-btn"
                   onClick={handleSpin}
                 >
-                  <FontAwesomeIcon icon={faRotate} style={{ marginRight: "0.45rem" }} />
+                  <FontAwesomeIcon icon={faRotate} style={{ marginRight: "0.4rem" }} />
                   Spin Again
                 </button>
               </div>

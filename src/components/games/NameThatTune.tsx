@@ -109,7 +109,7 @@ export default function NameThatTune({ onFinish, onBack, onUpdateMeta }: NameTha
 
   const handleReturnToHub = () => {
     sound.playClick();
-    onFinish(0);
+    onBack();
   };
 
   useEffect(() => {

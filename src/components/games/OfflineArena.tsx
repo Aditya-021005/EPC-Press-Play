@@ -164,7 +164,7 @@ export default function OfflineArena({
 
   const handleReturnToHub = () => {
     sound.playClick();
-    onFinish(0);
+    onBack();
   };
 
   useEffect(() => {
