@@ -137,7 +137,7 @@ export default function AdminPanel({
       onAdminAuth(cleanPin);
     } else {
       sound.playBuzzer();
-      setPinError("Invalid Admin PIN. (Default is 1234)");
+      setPinError("Invalid Admin PIN. Access denied.");
     }
   };
 
@@ -547,17 +547,6 @@ export default function AdminPanel({
                     {pinError}
                   </p>
                 )}
-                <span
-                  style={{
-                    display: "block",
-                    fontSize: "0.8rem",
-                    color: "var(--muted-paper, #64748b)",
-                    fontWeight: 700,
-                    marginTop: "0.5rem",
-                  }}
-                >
-                  (Default Master PIN: <strong style={{ color: "var(--ink)" }}>1234</strong>)
-                </span>
               </div>
 
               <button

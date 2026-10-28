@@ -35,6 +35,14 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "PRESS PLAY: THE GAME ROOM | 600 Point Tournament Arcade",
   description: "Experience Press Play: The Game Room - an electrifying 6-game tournament featuring Greener Grass, Real Headline or Not, Name That Tune, Categories, and Reverse Millionaire.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "32x32" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 import ArabianBackground from "@/components/layout/ArabianBackground";

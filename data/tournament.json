@@ -1,8 +1,8 @@
 {
-  "activeTeam": "",
+  "activeTeam": "jn",
   "teams": [
     {
-      "name": "hello",
+      "name": "Hi",
       "greenerGrass": 0,
       "realHeadline": 0,
       "nameThatTune": 0,
@@ -10,21 +10,32 @@
       "reverseMillionaire": 0,
       "offlineGame": 0,
       "total": 0,
-      "lastUpdated": 1793212713259
+      "lastUpdated": 1793214918086
     },
     {
-      "name": "PlayerAlpha",
+      "name": "Saumya",
       "greenerGrass": 0,
-      "realHeadline": 80,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 90,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 90,
+      "lastUpdated": 1793215141470
+    },
+    {
+      "name": "jn",
+      "greenerGrass": 0,
+      "realHeadline": 0,
       "nameThatTune": 0,
       "categories": 0,
       "reverseMillionaire": 0,
       "offlineGame": 0,
-      "total": 80,
-      "lastUpdated": 1793214050628
+      "total": 0,
+      "lastUpdated": 1793219189220
     }
   ],
-  "version": 35,
+  "version": 51,
   "adminPin": "1234",
   "lockedGames": []
 }

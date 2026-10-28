@@ -75,6 +75,7 @@ export default function ArcadeHeader({
           </button>
         ) : (
           <button type="button" className="topbar__brand" onClick={onGoHome} title="Back to the hub">
+            <img src="/icon.svg" alt="Press Play" className="topbar__logo-icon" />
             <span className="topbar__logo">Press Play</span>
             <span className="topbar__brand-text">
               <span className="topbar__name">The Game Room</span>

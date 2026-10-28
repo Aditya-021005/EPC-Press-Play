@@ -109,6 +109,20 @@
   cursor: pointer;
 }
 
+.topbar__logo-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  border: 2px solid var(--gold-border, #ffe082);
+  box-shadow: 2px 2px 0 var(--ink, #000);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.topbar__brand:hover .topbar__logo-icon {
+  transform: scale(1.08) rotate(3deg);
+}
+
 .topbar__logo {
   display: inline-block;
   padding: 0.28em 0.7em;

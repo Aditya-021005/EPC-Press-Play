@@ -25,7 +25,7 @@ export interface TournamentState {
 
 export const DEFAULT_TOURNAMENT_STATE: TournamentState = {
   activeTeam: "",
-  adminPin: "1234",
+  adminPin: process.env.ADMIN_PIN || "1234",
   lockedGames: [],
   teams: [],
   version: 1,
@@ -67,7 +67,11 @@ function readLocalTournamentFile(): TournamentState | null {
       const raw = fs.readFileSync(TOURNAMENT_FILE, "utf-8");
       const parsed = JSON.parse(raw);
       if (parsed && Array.isArray(parsed.teams)) {
-        if (!parsed.adminPin) parsed.adminPin = "1234";
+        if (process.env.ADMIN_PIN) {
+          parsed.adminPin = process.env.ADMIN_PIN;
+        } else if (!parsed.adminPin) {
+          parsed.adminPin = "1234";
+        }
         if (!parsed.lockedGames) parsed.lockedGames = [];
         return parsed;
       }
