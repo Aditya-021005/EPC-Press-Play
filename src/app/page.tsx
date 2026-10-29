@@ -60,6 +60,9 @@ export default function ArcadePage() {
     title: string;
     score: number;
     roundInfo?: string;
+    timeLeft?: number;
+    totalTime?: number;
+    onEndGame?: () => void;
   } | null>(null);
 
   // Initial load

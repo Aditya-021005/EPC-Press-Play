@@ -45,8 +45,15 @@
 
 /* ---------- Brand & In-Game Back Navigation ---------- */
 
-.topbar__back-btn {
+.topbar__brand-col {
   grid-area: brand;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.topbar__back-btn {
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -63,6 +70,102 @@
   cursor: pointer;
   white-space: nowrap;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+/* Integrated Header Timer */
+.topbar__timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.35rem 0.85rem;
+  background: #fffdf5;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 var(--ink);
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.topbar__timer.is-urgent {
+  background: #fee2e2;
+  border-color: var(--c-cherry);
+  color: var(--c-cherry);
+  box-shadow: 0 0 14px rgba(244, 63, 94, 0.45), 3px 3px 0 var(--ink);
+  animation: pulseTimerUrgent 0.6s infinite alternate;
+}
+
+@keyframes pulseTimerUrgent {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.03); }
+}
+
+.topbar__timer-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--c-grass);
+  color: #ffffff;
+  border: 1.5px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  flex-shrink: 0;
+}
+
+.topbar__timer.is-urgent .topbar__timer-icon {
+  background: var(--c-cherry);
+}
+
+.topbar__timer-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar__timer-label {
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  color: var(--muted-paper);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.topbar__timer.is-urgent .topbar__timer-label {
+  color: #991b1b;
+}
+
+.topbar__timer-digits {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: 0.8px;
+  color: var(--ink);
+}
+
+.topbar__timer.is-urgent .topbar__timer-digits {
+  color: var(--c-cherry);
+}
+
+.topbar__timer-gauge {
+  width: 44px;
+  height: 6px;
+  background: rgba(13, 4, 28, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.topbar__timer-gauge-fill {
+  height: 100%;
+  background: var(--c-grass);
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.topbar__timer-gauge-fill.fill-urgent {
+  background: var(--c-cherry);
 }
 
 .topbar__back-btn:hover {
@@ -328,9 +431,42 @@
   background: var(--c-grass);
 }
 
+.topbar__end-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 12px;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 2px solid var(--ink);
+  font-family: var(--font-mono, monospace);
+  font-weight: 900;
+  font-size: 0.82rem;
+  letter-spacing: 0.5px;
+  box-shadow: 2.5px 2.5px 0 var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease;
+}
+
+.topbar__end-btn:hover {
+  background: #ef4444;
+  color: #ffffff;
+  transform: translate(-1px, -1px);
+  box-shadow: 3.5px 3.5px 0 var(--ink);
+}
+
+.topbar__end-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
 .topbar__brand:focus-visible,
 .topbar__icon-btn:focus-visible,
-.topbar__host:focus-visible {
+.topbar__host:focus-visible,
+.topbar__end-btn:focus-visible {
   outline: 3px solid var(--c-sun);
   outline-offset: 3px;
   border-radius: 12px;

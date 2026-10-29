@@ -5,7 +5,7 @@ import { TeamScore } from "@/lib/tournamentState";
 import { sound } from "@/lib/audio";
 import "@/styles/header.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faHourglassHalf, faXmark } from "@fortawesome/free-solid-svg-icons";
 
 interface ArcadeHeaderProps {
   activeTeam: TeamScore;
@@ -17,6 +17,9 @@ interface ArcadeHeaderProps {
     title: string;
     score: number;
     roundInfo?: string;
+    timeLeft?: number;
+    totalTime?: number;
+    onEndGame?: () => void;
   } | null;
 }
 
@@ -59,30 +62,60 @@ export default function ArcadeHeader({
   return (
     <header className="topbar">
       <div className="topbar__inner">
-        {/* Brand / Back button when in game */}
-        {gameMeta ? (
-          <button
-            type="button"
-            className="topbar__back-btn"
-            onClick={onGoHome}
-            title="Return to Arcade Hub"
-          >
-            <span className="topbar__back-icon">
-              <FontAwesomeIcon icon={faArrowLeft} />
-            </span>
-            <span className="topbar__back-text">HUB</span>
-            <span className="topbar__game-tag">{gameMeta.title}</span>
-          </button>
-        ) : (
-          <button type="button" className="topbar__brand" onClick={onGoHome} title="Back to the hub">
-            <img src="/icon.svg" alt="Press Play" className="topbar__logo-icon" />
-            <span className="topbar__logo">Press Play</span>
-            <span className="topbar__brand-text">
-              <span className="topbar__name">The Game Room</span>
-              <span className="topbar__sub">6 games · 100 pts each</span>
-            </span>
-          </button>
-        )}
+        {/* Brand / Back button & In-Game Timer */}
+        <div className="topbar__brand-col">
+          {gameMeta ? (
+            <button
+              type="button"
+              className="topbar__back-btn"
+              onClick={onGoHome}
+              title="Return to Arcade Hub"
+            >
+              <span className="topbar__back-icon">
+                <FontAwesomeIcon icon={faArrowLeft} />
+              </span>
+              <span className="topbar__back-text">HUB</span>
+              <span className="topbar__game-tag">{gameMeta.title}</span>
+            </button>
+          ) : (
+            <button type="button" className="topbar__brand" onClick={onGoHome} title="Back to the hub">
+              <img src="/icon.svg" alt="Press Play" className="topbar__logo-icon" />
+              <span className="topbar__logo">Press Play</span>
+              <span className="topbar__brand-text">
+                <span className="topbar__name">The Game Room</span>
+                <span className="topbar__sub">6 games · 100 pts each</span>
+              </span>
+            </button>
+          )}
+
+          {/* Integrated In-Game Timer */}
+          {gameMeta && gameMeta.timeLeft !== undefined && (
+            <div
+              className={`topbar__timer ${gameMeta.timeLeft <= 6 ? "is-urgent" : ""}`}
+              title="Round countdown timer"
+            >
+              <span className="topbar__timer-icon">
+                <FontAwesomeIcon icon={faHourglassHalf} />
+              </span>
+              <div className="topbar__timer-info">
+                <span className="topbar__timer-label">TIME</span>
+                <span className="topbar__timer-digits">
+                  {Math.floor(gameMeta.timeLeft / 60)}:{(gameMeta.timeLeft % 60).toString().padStart(2, "0")}
+                </span>
+              </div>
+              {gameMeta.totalTime && (
+                <div className="topbar__timer-gauge">
+                  <div
+                    className={`topbar__timer-gauge-fill ${gameMeta.timeLeft <= 6 ? "fill-urgent" : ""}`}
+                    style={{
+                      width: `${Math.max(0, Math.min(100, (gameMeta.timeLeft / gameMeta.totalTime) * 100))}%`,
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Active team / Game score meter */}
         <div className="topbar__meter" aria-label="Score meter">
@@ -131,6 +164,19 @@ export default function ArcadeHeader({
 
         {/* Actions */}
         <div className="topbar__actions">
+          {/* Integrated In-Game END GAME Button */}
+          {gameMeta?.onEndGame && (
+            <button
+              type="button"
+              className="topbar__end-btn"
+              onClick={gameMeta.onEndGame}
+              title="End game and audit score"
+            >
+              <FontAwesomeIcon icon={faXmark} />
+              <span>END GAME</span>
+            </button>
+          )}
+
           <span className="topbar__chip" title="Team currently on stage">
             <span className="topbar__chip-label">On stage</span>
             <strong>{activeTeam.name}</strong>

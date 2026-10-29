@@ -5,6 +5,7 @@ import { TARGET_WORDS, isValidWord } from "@/data/words";
 import { fetchGameContent } from "@/lib/gameContent";
 import { sound } from "@/lib/audio";
 import confetti from "canvas-confetti";
+import "@/styles/greener-grass.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faTriangleExclamation,
@@ -13,12 +14,25 @@ import {
   faTrophy,
   faArrowRight,
   faHourglassHalf,
+  faArrowLeft,
+  faHouse,
+  faCoins,
+  faXmark,
+  faCheck,
+  faDeleteLeft,
 } from "@fortawesome/free-solid-svg-icons";
 
 interface GreenerGrassProps {
   onFinish: (score: number) => void;
   onBack: () => void;
-  onUpdateMeta?: (meta: { title: string; score: number; roundInfo?: string }) => void;
+  onUpdateMeta?: (meta: {
+    title: string;
+    score: number;
+    roundInfo?: string;
+    timeLeft?: number;
+    totalTime?: number;
+    onEndGame?: () => void;
+  }) => void;
 }
 
 type TileStatus = "empty" | "active" | "green" | "yellow" | "gray";
@@ -53,15 +67,17 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
   const [hazardTriggered, setHazardTriggered] = useState(false);
   const [totalGameScore, setTotalGameScore] = useState(0);
   const [currentWordBanked, setCurrentWordBanked] = useState(0);
-  const [statusMsg, setStatusMsg] = useState("Type a 5-letter word within 30s and press ENTER");
+  const [statusMsg, setStatusMsg] = useState("Type a guess or use the on-screen keyboard.");
   const [wordFinished, setWordFinished] = useState(false);
   const [keyboardLetterStatus, setKeyboardLetterStatus] = useState<Record<string, TileStatus>>({});
+  const [solvedWordsCount, setSolvedWordsCount] = useState(0);
+  const [showRules, setShowRules] = useState(false);
 
   // 30-second timer per word guess
   const [timeLeft, setTimeLeft] = useState(TURN_TIMEOUT_SECONDS);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const targetWord = wordList[currentWordIdx];
+  const targetWord = wordList[currentWordIdx] || "GAMES";
 
   // Reset board for next word
   const initWord = useCallback(() => {
@@ -70,7 +86,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
     setHazardTriggered(false);
     setCurrentWordBanked(0);
     setWordFinished(false);
-    setStatusMsg("Guess 1 of 6: Find green tiles within 30s! Avoid yellow hazards!");
+    setStatusMsg("Type a guess or use the on-screen keyboard.");
     setKeyboardLetterStatus({});
     setTimeLeft(TURN_TIMEOUT_SECONDS);
   }, []);
@@ -92,7 +108,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
           sound.playHazardAlarm();
           setHazardTriggered(true);
           setWordFinished(true);
-          setStatusMsg(`TIME EXPIRED (30s)! Turn timed out. The word was ${targetWord}`);
+          setStatusMsg(`TIME EXPIRED (30s)! The target word was '${targetWord}'`);
           return 0;
         }
         if (prev <= 6) {
@@ -107,6 +123,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
     };
   }, [guesses.length, currentWordIdx, hazardTriggered, wordFinished, targetWord]);
 
+  // Handle key submissions
   const handleKeyPress = useCallback((key: string) => {
     if (hazardTriggered || wordFinished) return;
 
@@ -138,7 +155,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
       let greenCount = 0;
       let hasYellow = false;
 
-      // Pass 1: Greens (exact position)
+      // Pass 1: Greens (exact match)
       for (let i = 0; i < 5; i++) {
         if (guessArr[i] === targetArr[i]) {
           newStatuses[i] = "green";
@@ -147,7 +164,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
         }
       }
 
-      // Pass 2: Yellows (wrong position)
+      // Pass 2: Yellows (wrong spot)
       for (let i = 0; i < 5; i++) {
         if (newStatuses[i] !== "green") {
           const char = guessArr[i];
@@ -159,7 +176,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
         }
       }
 
-      // Update keyboard
+      // Update keyboard letter colors
       const updatedKb = { ...keyboardLetterStatus };
       newStatuses.forEach((status, idx) => {
         const letter = guessArr[idx];
@@ -183,7 +200,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
         sound.playHazardAlarm();
         setHazardTriggered(true);
         setWordFinished(true);
-        setStatusMsg(`YELLOW HAZARD! Word contained letters in wrong spots. Turn stopped! Target was ${targetWord}`);
+        setStatusMsg(`YELLOW HAZARD! Word contained letters in wrong spots. Target was '${targetWord}'`);
         return;
       }
 
@@ -192,24 +209,26 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
       const newBanked = Math.max(currentWordBanked, earned);
       setCurrentWordBanked(newBanked);
 
-      // Check for 5 greens
+      // Check for 5 greens (Full solve)
       if (greenCount === 5) {
         sound.playSuccess();
-        confetti({ particleCount: 50, spread: 60 });
+        confetti({ particleCount: 60, spread: 65 });
         setWordFinished(true);
-        setStatusMsg(`BRILLIANT! Solved in full (+20 PTS)! Target was ${targetWord}`);
+        setStatusMsg(`SOLVED! All 5 greens matched (+20 PTS)! Word was '${targetWord}'`);
         setTotalGameScore((prev) => prev + 20);
+        setSolvedWordsCount((prev) => prev + 1);
         return;
       }
 
       // Check if max guesses (6) reached
       if (updatedGuesses.length >= MAX_GUESSES) {
         setWordFinished(true);
-        setStatusMsg(`All 6 guesses used! Banked ${newBanked} pts.`);
+        setStatusMsg(`All 6 guesses used! Banked ${newBanked} pts. Target was '${targetWord}'`);
         setTotalGameScore((prev) => prev + newBanked);
+        if (newBanked > 0) setSolvedWordsCount((prev) => prev + 1);
       } else {
         sound.playSuccess();
-        setStatusMsg(`Safe! Banked ${newBanked} pts. Push your luck or click 'Bank & Advance'!`);
+        setStatusMsg(`Safe! +${newBanked} pts available. Bank greens or keep guessing!`);
       }
     } else if (key === "BACKSPACE" || key === "DEL") {
       sound.playClick(400);
@@ -220,7 +239,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
     }
   }, [currentGuess, targetWord, hazardTriggered, wordFinished, guesses, currentWordBanked, keyboardLetterStatus]);
 
-  // Listen to physical keyboard
+  // Listen to physical keyboard typing
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -235,11 +254,14 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyPress]);
 
-  // Bank & advance to next word
+  // Bank greens and advance
   const bankAndAdvance = () => {
     sound.playCoinDrop();
     const finalScore = totalGameScore + currentWordBanked;
     setTotalGameScore(finalScore);
+    if (currentWordBanked > 0) {
+      setSolvedWordsCount((prev) => prev + 1);
+    }
 
     if (currentWordIdx + 1 < 5) {
       setCurrentWordIdx((prev) => prev + 1);
@@ -249,7 +271,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
     }
   };
 
-  // Next word after hazard or finish
+  // Next word after round finish or hazard
   const handleNextWord = () => {
     sound.playClick();
     if (currentWordIdx + 1 < 5) {
@@ -269,173 +291,305 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
   const keyboardRows = [
     ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
     ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-    ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "DEL"],
+    ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "⌫"],
   ];
 
+  // Sync with global header meta (Timer & End Game are integrated into ArcadeHeader)
   useEffect(() => {
     onUpdateMeta?.({
       title: "Greener Grass",
       score: totalGameScore,
-      roundInfo: `Word ${currentWordIdx + 1}/5 • ${hazardTriggered || wordFinished ? "Round Over" : `${timeLeft}s`}`,
+      roundInfo: `Word ${currentWordIdx + 1}/5`,
+      timeLeft: hazardTriggered || wordFinished ? 0 : timeLeft,
+      totalTime: TURN_TIMEOUT_SECONDS,
+      onEndGame: () => finishGame(totalGameScore),
     });
   }, [totalGameScore, currentWordIdx, timeLeft, hazardTriggered, wordFinished, onUpdateMeta]);
 
+  // Format digital timer string: 0:29 or 1:59 style
+  const formattedMinutes = Math.floor(timeLeft / 60);
+  const formattedSeconds = timeLeft % 60;
+  const timeDisplay = `${formattedMinutes}:${formattedSeconds < 10 ? "0" : ""}${formattedSeconds}`;
+  const timerPercentage = Math.max(0, Math.min(100, (timeLeft / TURN_TIMEOUT_SECONDS) * 100));
+
   return (
-    <div className="game-arena wordle-arena">
-      <div className="game-body-center">
-        {/* Top Timer Bar (30s per word turn) */}
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "500px",
-            background: "var(--paper)",
-            border: "3px solid var(--ink)",
-            boxShadow: "4px 4px 0 var(--ink)",
-            borderRadius: "var(--radius-md)",
-            padding: "0.6rem 1.2rem",
-            marginBottom: "1rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <span style={{ fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.88rem", color: "var(--ink)" }}>
-            Word {currentWordIdx + 1} of 5 • Banked: <strong style={{ color: "var(--c-grass)" }}>{totalGameScore} pts</strong>
-          </span>
-
-          <div
-            style={{
-              padding: "0.35rem 0.9rem",
-              borderRadius: "10px",
-              background: timeLeft <= 6 ? "var(--c-cherry)" : "var(--stage)",
-              color: timeLeft <= 6 ? "#fff" : "var(--on-stage)",
-              border: "2px solid var(--ink)",
-              fontFamily: "var(--font-mono)",
-              fontWeight: 900,
-              fontSize: "1.2rem",
-              minWidth: "75px",
-              textAlign: "center",
-            }}
-          >
-            {hazardTriggered || wordFinished ? "—" : `${timeLeft}s`}
-          </div>
-        </div>
-
-        {/* Rules Reminder / Hazard Banner */}
-        {hazardTriggered ? (
-          <div className="rules-banner hazard-alert-banner">
-            <span className="banner-icon">
-              <FontAwesomeIcon icon={faBomb} />
+    <div className="gg-screen-wrap">
+      {/* =========================================================================
+          MAIN TWO-COLUMN SPLIT (DESKTOP/LAPTOP)
+          LEFT: 6x5 Greener Grass Board | RIGHT: Stats, Progress, Keyboard, Action
+          ========================================================================= */}
+      <div className="gg-desktop-grid">
+        {/* LEFT COLUMN: GREENER GRASS 6x5 BOARD */}
+        <div className="gg-board-card">
+          <div className="gg-board-header">
+            <span className="gg-badge-round">
+              WORD {currentWordIdx + 1} OF 5
             </span>
-            <div>
-              <strong>HAZARD STRUCK:</strong> {statusMsg}
+            <div className="gg-badge-solved">
+              <span className="solved-gem">◆</span>
+              SOLVED {solvedWordsCount}/5
             </div>
           </div>
-        ) : (
-          <div className="rules-banner">
-            <span className="banner-icon">
-              <FontAwesomeIcon icon={faTriangleExclamation} />
-            </span>
-            <div>
-              <strong>RULE:</strong> <strong>30s</strong> to submit each word. <strong>4 PTS</strong> per <strong>GREEN</strong>. <strong>YELLOW</strong> busts!
-            </div>
-          </div>
-        )}
 
-        {/* Wordle Board Grid (6 rows of 5 tiles) */}
-        <div className="wordle-board">
-          {Array.from({ length: MAX_GUESSES }).map((_, rIdx) => {
-            if (rIdx < guesses.length) {
-              const row = guesses[rIdx];
+          {/* 6 Rows of 5 Letter Tiles */}
+          <div className="gg-grid-container" role="grid" aria-label="Greener Grass guess board">
+            {Array.from({ length: MAX_GUESSES }).map((_, rIdx) => {
+              // Past Evaluated Guess Row
+              if (rIdx < guesses.length) {
+                const row = guesses[rIdx];
+                return (
+                  <div key={rIdx} className="gg-grid-row" role="row">
+                    {row.letters.map((char, cIdx) => (
+                      <div
+                        key={cIdx}
+                        className={`gg-tile-cell tile-${row.statuses[cIdx]}`}
+                        role="gridcell"
+                      >
+                        {char}
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+
+              // Active Typing Row
+              if (rIdx === guesses.length && !wordFinished && !hazardTriggered) {
+                return (
+                  <div key={rIdx} className="gg-grid-row" role="row">
+                    {Array.from({ length: 5 }).map((_, cIdx) => {
+                      const char = currentGuess[cIdx] || "";
+                      const isActiveSlot = cIdx === currentGuess.length;
+                      const tileClass = char
+                        ? "tile-filled"
+                        : isActiveSlot
+                        ? "tile-active"
+                        : "tile-empty";
+
+                      return (
+                        <div
+                          key={cIdx}
+                          className={`gg-tile-cell ${tileClass}`}
+                          role="gridcell"
+                        >
+                          {char}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+
+              // Future Empty Row
               return (
-                <div key={rIdx} className="wordle-row">
-                  {row.letters.map((char, cIdx) => (
-                    <div key={cIdx} className={`wordle-tile ${row.statuses[cIdx]}`}>
-                      {char}
-                    </div>
+                <div key={rIdx} className="gg-grid-row" role="row">
+                  {Array.from({ length: 5 }).map((_, cIdx) => (
+                    <div
+                      key={cIdx}
+                      className="gg-tile-cell tile-empty"
+                      role="gridcell"
+                    />
                   ))}
                 </div>
               );
-            }
-            if (rIdx === guesses.length && !wordFinished && !hazardTriggered) {
-              return (
-                <div key={rIdx} className="wordle-row">
-                  {Array.from({ length: 5 }).map((_, cIdx) => {
-                    const char = currentGuess[cIdx] || "";
-                    return (
-                      <div key={cIdx} className={`wordle-tile ${char ? "filled" : "empty"}`}>
-                        {char}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            }
-            return (
-              <div key={rIdx} className="wordle-row">
-                {Array.from({ length: 5 }).map((_, cIdx) => (
-                  <div key={cIdx} className="wordle-tile empty" />
-                ))}
+            })}
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: CONTROLS, STATS, PROGRESS & KEYBOARD */}
+        <div className="gg-controls-card">
+          {/* Top Two Stats Cards (SCORE & ROUND PROGRESS) */}
+          <div className="gg-stats-row">
+            {/* SCORE CARD */}
+            <div className="gg-stat-card card-score">
+              <span className="gg-stat-label">TOTAL SCORE</span>
+              <div className="gg-stat-val val-score">
+                <span>◆</span>
+                <span>{totalGameScore}</span>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Action Controls */}
-        <div className="board-action-bar">
-          <div className="gg-status-message">{statusMsg}</div>
-
-          {hazardTriggered || wordFinished ? (
-            <button
-              className="btn-action btn-gold wordle-btn-action"
-              onClick={handleNextWord}
-            >
-              {currentWordIdx + 1 < 5 ? (
-                <>
-                  PROCEED TO WORD {currentWordIdx + 2} OF 5
-                  <FontAwesomeIcon icon={faArrowRight} style={{ marginLeft: "0.5rem" }} />
-                </>
-              ) : (
-                <>
-                  FINISH GAME & AUDIT SCORE
-                  <FontAwesomeIcon icon={faTrophy} style={{ marginLeft: "0.5rem" }} />
-                </>
+              {currentWordBanked > 0 && !wordFinished && (
+                <span className="gg-stat-sub">+{currentWordBanked} pts ready</span>
               )}
-            </button>
-          ) : (
-            <button
-              className="btn-action btn-gold wordle-btn-action"
-              onClick={bankAndAdvance}
-              disabled={currentWordBanked === 0}
-            >
-              <FontAwesomeIcon icon={faBuildingColumns} style={{ marginRight: "0.5rem" }} />
-              BANK CURRENT GREENS ({currentWordBanked} pts) & ADVANCE
-            </button>
-          )}
-        </div>
-
-        {/* Virtual Keyboard */}
-        <div className="virtual-keyboard">
-          {keyboardRows.map((row, rIdx) => (
-            <div key={rIdx} className="kb-row">
-              {row.map((k) => {
-                const isWide = k === "ENTER" || k === "DEL";
-                const letterStatus = keyboardLetterStatus[k];
-                const statusClass = letterStatus ? `key-${letterStatus}` : "";
-                return (
-                  <button
-                    key={k}
-                    className={`kb-key ${isWide ? "wide" : ""} ${statusClass}`}
-                    onClick={() => handleKeyPress(k === "DEL" ? "BACKSPACE" : k)}
-                  >
-                    {k}
-                  </button>
-                );
-              })}
             </div>
-          ))}
+
+            {/* ROUND PROGRESS CARD */}
+            <div className="gg-stat-card card-progress">
+              <span className="gg-stat-label">ROUND PROGRESS</span>
+              <div className="gg-stat-val val-word-num">
+                <span>WORD {currentWordIdx + 1}</span>
+                <span className="val-word-of">/ 5</span>
+              </div>
+              <span className="gg-stat-sub solved-sub">
+                {solvedWordsCount} Words Solved
+              </span>
+            </div>
+          </div>
+
+          {/* Horizontal Progress Bar */}
+          <div
+            className="gg-progress-track"
+            role="progressbar"
+            aria-valuenow={timerPercentage}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className={`gg-progress-fill ${timeLeft <= 6 ? "fill-low" : ""}`}
+              style={{ width: `${timerPercentage}%` }}
+            />
+          </div>
+
+          {/* Instructional / Status Message */}
+          <div
+            className={`gg-instruction-bar ${
+              hazardTriggered ? "hazard-active" : currentWordBanked > 0 ? "success-active" : ""
+            }`}
+          >
+            {hazardTriggered && (
+              <FontAwesomeIcon icon={faBomb} style={{ marginRight: "0.5rem", color: "#f87171" }} />
+            )}
+            {statusMsg}
+          </div>
+
+          {/* Virtual Keyboard */}
+          <div className="gg-keyboard-frame" aria-label="On-screen Keyboard">
+            {keyboardRows.map((row, rIdx) => (
+              <div key={rIdx} className="gg-kb-row">
+                {row.map((k) => {
+                  const isWide = k === "ENTER" || k === "⌫";
+                  const letterStatus = keyboardLetterStatus[k];
+                  const statusClass = letterStatus ? `key-${letterStatus}` : "";
+
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      className={`gg-kb-btn ${isWide ? "kb-btn-wide" : ""} ${statusClass}`}
+                      onClick={() => handleKeyPress(k === "⌫" ? "BACKSPACE" : k)}
+                      disabled={hazardTriggered || wordFinished}
+                      aria-label={k === "⌫" ? "Backspace" : k}
+                    >
+                      {k === "⌫" ? <FontAwesomeIcon icon={faDeleteLeft} /> : k}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          {/* Big Action Submit / Advance Button */}
+          <div className="gg-actions-wrap">
+            {hazardTriggered || wordFinished ? (
+              <button
+                type="button"
+                className="gg-submit-main-btn"
+                onClick={handleNextWord}
+              >
+                {currentWordIdx + 1 < 5 ? (
+                  <>
+                    PROCEED TO WORD {currentWordIdx + 2} OF 5
+                    <FontAwesomeIcon icon={faArrowRight} />
+                  </>
+                ) : (
+                  <>
+                    FINISH GAME & AUDIT SCORE
+                    <FontAwesomeIcon icon={faTrophy} />
+                  </>
+                )}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="gg-submit-main-btn"
+                  onClick={() => handleKeyPress("ENTER")}
+                  disabled={currentGuess.length < 5}
+                >
+                  <FontAwesomeIcon icon={faCheck} />
+                  SUBMIT GUESS
+                </button>
+
+                {currentWordBanked > 0 && (
+                  <button
+                    type="button"
+                    className="gg-bank-advance-btn"
+                    onClick={bankAndAdvance}
+                  >
+                    <FontAwesomeIcon icon={faBuildingColumns} />
+                    BANK CURRENT GREENS (+{currentWordBanked} PTS) & ADVANCE
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* =========================================================================
+          RULES MODAL (PRESS PLAY THEMED)
+          ========================================================================= */}
+      {showRules && (
+        <div className="gg-rules-overlay" onClick={() => setShowRules(false)}>
+          <div className="gg-rules-box" onClick={(e) => e.stopPropagation()}>
+            <div className="gg-rules-title">
+              <h3>HOW TO PLAY GREENER GRASS</h3>
+              <button
+                type="button"
+                className="gg-top-btn gg-btn-icon"
+                onClick={() => setShowRules(false)}
+                aria-label="Close rules"
+              >
+                <FontAwesomeIcon icon={faXmark} />
+              </button>
+            </div>
+
+            <div className="gg-rules-list">
+              <div className="gg-rule-item">
+                <div className="gg-rule-icon ri-green">✓</div>
+                <div>
+                  <strong>GREEN TILE (+4 PTS):</strong> Letter is in the word and in the exact correct position.
+                </div>
+              </div>
+
+              <div className="gg-rule-item">
+                <div className="gg-rule-icon ri-yellow">!</div>
+                <div>
+                  <strong>YELLOW TILE (HAZARD!):</strong> Letter is in the word but wrong spot. This causes a hazard and ends your current word turn!
+                </div>
+              </div>
+
+              <div className="gg-rule-item">
+                <div className="gg-rule-icon ri-gray">✕</div>
+                <div>
+                  <strong>GRAY TILE:</strong> Letter is not in the word at all. Safe to continue guessing!
+                </div>
+              </div>
+
+              <div className="gg-rule-item">
+                <div className="gg-rule-icon ri-green">★</div>
+                <div>
+                  <strong>ALL 5 GREENS (+20 PTS):</strong> Matching all 5 green letters scores the maximum +20 points for that word!
+                </div>
+              </div>
+
+              <div className="gg-rule-item">
+                <div className="gg-rule-icon ri-yellow">⏱</div>
+                <div>
+                  <strong>30s PER TURN:</strong> Submit each guess before the timer runs out. You can bank your earned greens anytime to advance safely!
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="gg-submit-main-btn"
+              onClick={() => setShowRules(false)}
+              style={{ marginTop: "1.4rem" }}
+            >
+              GOT IT • RESUME PLAYING
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
