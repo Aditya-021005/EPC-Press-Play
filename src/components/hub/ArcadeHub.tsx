@@ -73,8 +73,8 @@ const GAMES: GameDef[] = [
     short: "Categories",
     tag: "52 Playing Cards",
     accent: "var(--c-purple-bright, #a855f7)",
-    blurb: "52 playing cards deck, draw 10, roll a random letter, and sprint for 60 seconds. EPC scored.",
-    facts: ["52 playing cards", "60s sprint", "EPC scored (0, 5, 10 pts)"],
+    blurb: "52 playing cards deck, draw 10, roll a random letter, and sprint for 2 minutes. EPC scored.",
+    facts: ["52 playing cards", "2 mins sprint", "EPC scored (0, 5, 10 pts)"],
     cta: "Play Categories",
   },
   {

@@ -291,13 +291,13 @@ function viewToGameKey(view: string): PlayableGameKey | null {
   const prevViewRef = useRef<string>("");
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }
     if (currentView !== prevViewRef.current) {
       prevViewRef.current = currentView;
+      if (typeof window !== "undefined") {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      }
       if (currentView === "login" || currentView === "hub") {
         setActiveGameMeta(null);
       } else {

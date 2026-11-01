@@ -9,7 +9,7 @@
       "color": "black",
       "name": "Bollywood movies",
       "icon": "film",
-      "hint": "e.g. Sholay, 3 Idiots, DDLJ, Dangal..."
+      "hint": ""
     },
     {
       "id": "spades-2",
@@ -20,7 +20,7 @@
       "color": "black",
       "name": "Hollywood movies",
       "icon": "film",
-      "hint": "e.g. Inception, Titanic, Gladiator, Avatar..."
+      "hint": ""
     },
     {
       "id": "spades-3",
@@ -31,7 +31,7 @@
       "color": "black",
       "name": "Anime characters",
       "icon": "mask",
-      "hint": "e.g. Naruto, Goku, Luffy, Levi..."
+      "hint": ""
     },
     {
       "id": "spades-4",
@@ -42,7 +42,7 @@
       "color": "black",
       "name": "Book titles",
       "icon": "film",
-      "hint": "e.g. 1984, Harry Potter, Dune, The Hobbit..."
+      "hint": ""
     },
     {
       "id": "spades-5",
@@ -53,7 +53,7 @@
       "color": "black",
       "name": "Musical artists or bands",
       "icon": "guitar",
-      "hint": "e.g. Queen, Arijit Singh, Coldplay, Taylor Swift..."
+      "hint": ""
     },
     {
       "id": "spades-6",
@@ -64,7 +64,7 @@
       "color": "black",
       "name": "Marvel Characters",
       "icon": "mask",
-      "hint": "e.g. Iron Man, Thor, Spider-Man, Loki..."
+      "hint": ""
     },
     {
       "id": "spades-7",
@@ -75,7 +75,7 @@
       "color": "black",
       "name": "Video games",
       "icon": "film",
-      "hint": "e.g. Minecraft, GTA, Valorant, FIFA..."
+      "hint": ""
     },
     {
       "id": "spades-8",
@@ -86,7 +86,7 @@
       "color": "black",
       "name": "Ice cream flavours",
       "icon": "cookie",
-      "hint": "e.g. Vanilla, Butterscotch, Belgian Chocolate..."
+      "hint": ""
     },
     {
       "id": "spades-9",
@@ -97,7 +97,7 @@
       "color": "black",
       "name": "Things found in a kitchen",
       "icon": "utensils",
-      "hint": "e.g. Blender, Spatula, Microwave, Pan..."
+      "hint": ""
     },
     {
       "id": "spades-10",
@@ -108,7 +108,7 @@
       "color": "black",
       "name": "Fast food chains",
       "icon": "cookie",
-      "hint": "e.g. McDonald's, KFC, Subway, Domino's..."
+      "hint": ""
     },
     {
       "id": "spades-J",
@@ -119,7 +119,7 @@
       "color": "black",
       "name": "Things you find in a supermarket",
       "icon": "paperclip",
-      "hint": "e.g. Trolley, Cereal, Barcode scanner, Milk..."
+      "hint": ""
     },
     {
       "id": "spades-Q",
@@ -130,7 +130,7 @@
       "color": "black",
       "name": "Things people collect",
       "icon": "star",
-      "hint": "e.g. Stamps, Coins, Sneakers, Action figures..."
+      "hint": ""
     },
     {
       "id": "spades-K",
@@ -141,7 +141,7 @@
       "color": "black",
       "name": "Things found in a classroom",
       "icon": "paperclip",
-      "hint": "e.g. Blackboard, Chalk, Projector, Duster..."
+      "hint": ""
     },
     {
       "id": "hearts-A",
@@ -152,7 +152,7 @@
       "color": "red",
       "name": "Things you pack for a trip",
       "icon": "suitcase",
-      "hint": "e.g. Passport, Charger, Sunscreen, Toothbrush..."
+      "hint": ""
     },
     {
       "id": "hearts-2",
@@ -163,7 +163,7 @@
       "color": "red",
       "name": "Things you find in a bathroom",
       "icon": "utensils",
-      "hint": "e.g. Shampoo, Towel, Mirror, Soap..."
+      "hint": ""
     },
     {
       "id": "hearts-3",
@@ -174,7 +174,7 @@
       "color": "red",
       "name": "Countries",
       "icon": "globe",
-      "hint": "e.g. Japan, Germany, Brazil, Canada..."
+      "hint": ""
     },
     {
       "id": "hearts-4",
@@ -185,7 +185,7 @@
       "color": "red",
       "name": "Capital cities",
       "icon": "globe",
-      "hint": "e.g. Tokyo, Paris, London, New Delhi..."
+      "hint": ""
     },
     {
       "id": "hearts-5",
@@ -196,7 +196,7 @@
       "color": "red",
       "name": "Indian cities",
       "icon": "globe",
-      "hint": "e.g. Mumbai, Bengaluru, Jaipur, Hyderabad..."
+      "hint": ""
     },
     {
       "id": "hearts-6",
@@ -207,7 +207,7 @@
       "color": "red",
       "name": "Rivers",
       "icon": "globe",
-      "hint": "e.g. Ganga, Nile, Amazon, Danube..."
+      "hint": ""
     },
     {
       "id": "hearts-7",
@@ -218,7 +218,7 @@
       "color": "red",
       "name": "Mountains",
       "icon": "globe",
-      "hint": "e.g. Everest, K2, Kilimanjaro, Alps..."
+      "hint": ""
     },
     {
       "id": "hearts-8",
@@ -229,7 +229,7 @@
       "color": "red",
       "name": "Things found at an airport",
       "icon": "suitcase",
-      "hint": "e.g. Boarding pass, Runway, Luggage carousel..."
+      "hint": ""
     },
     {
       "id": "hearts-9",
@@ -240,7 +240,7 @@
       "color": "red",
       "name": "Places where people go on dates",
       "icon": "star",
-      "hint": "e.g. Cafe, Cinema, Beach, Park..."
+      "hint": ""
     },
     {
       "id": "hearts-10",
@@ -251,7 +251,7 @@
       "color": "red",
       "name": "Animals",
       "icon": "paw",
-      "hint": "e.g. Tiger, Elephant, Kangaroo, Cheetah..."
+      "hint": ""
     },
     {
       "id": "hearts-J",
@@ -262,7 +262,7 @@
       "color": "red",
       "name": "Birds",
       "icon": "paw",
-      "hint": "e.g. Peacock, Eagle, Penguin, Flamingo..."
+      "hint": ""
     },
     {
       "id": "hearts-Q",
@@ -273,7 +273,7 @@
       "color": "red",
       "name": "Flowers",
       "icon": "carrot",
-      "hint": "e.g. Rose, Lotus, Jasmine, Sunflower..."
+      "hint": ""
     },
     {
       "id": "hearts-K",
@@ -284,7 +284,7 @@
       "color": "red",
       "name": "Electrical Appliances",
       "icon": "wrench",
-      "hint": "e.g. Refrigerator, Washing machine, Toaster..."
+      "hint": ""
     },
     {
       "id": "diamonds-A",
@@ -295,7 +295,7 @@
       "color": "red",
       "name": "Famous historical figures",
       "icon": "star",
-      "hint": "e.g. Gandhi, Julius Caesar, Napoleon, Lincoln..."
+      "hint": ""
     },
     {
       "id": "diamonds-2",
@@ -306,7 +306,7 @@
       "color": "red",
       "name": "Scientists",
       "icon": "star",
-      "hint": "e.g. Einstein, Newton, Marie Curie, Raman..."
+      "hint": ""
     },
     {
       "id": "diamonds-3",
@@ -317,7 +317,7 @@
       "color": "red",
       "name": "Languages",
       "icon": "globe",
-      "hint": "e.g. Hindi, Spanish, Mandarin, French..."
+      "hint": ""
     },
     {
       "id": "diamonds-4",
@@ -328,7 +328,7 @@
       "color": "red",
       "name": "Professions",
       "icon": "briefcase",
-      "hint": "e.g. Doctor, Architect, Pilot, Software Engineer..."
+      "hint": ""
     },
     {
       "id": "diamonds-5",
@@ -339,7 +339,7 @@
       "color": "red",
       "name": "Festivals",
       "icon": "star",
-      "hint": "e.g. Diwali, Holi, Eid, Christmas..."
+      "hint": ""
     },
     {
       "id": "diamonds-6",
@@ -350,7 +350,7 @@
       "color": "red",
       "name": "Chemical Elements",
       "icon": "wrench",
-      "hint": "e.g. Oxygen, Gold, Carbon, Helium..."
+      "hint": ""
     },
     {
       "id": "diamonds-7",
@@ -361,7 +361,7 @@
       "color": "red",
       "name": "Currencies",
       "icon": "star",
-      "hint": "e.g. Rupee, Dollar, Euro, Yen..."
+      "hint": ""
     },
     {
       "id": "diamonds-8",
@@ -372,7 +372,7 @@
       "color": "red",
       "name": "Clothing Items",
       "icon": "tag",
-      "hint": "e.g. Kurta, Hoodie, Jeans, Blazer..."
+      "hint": ""
     },
     {
       "id": "diamonds-9",
@@ -383,7 +383,7 @@
       "color": "red",
       "name": "Diseases",
       "icon": "briefcase",
-      "hint": "e.g. Malaria, Diabetes, Dengue, Asthma..."
+      "hint": ""
     },
     {
       "id": "diamonds-10",
@@ -394,7 +394,7 @@
       "color": "red",
       "name": "Body Parts",
       "icon": "paw",
-      "hint": "e.g. Forehead, Elbow, Lungs, Shoulder..."
+      "hint": ""
     },
     {
       "id": "diamonds-J",
@@ -405,7 +405,7 @@
       "color": "red",
       "name": "Emotions",
       "icon": "bullhorn",
-      "hint": "e.g. Euphoria, Nostalgia, Anxiety, Joy..."
+      "hint": ""
     },
     {
       "id": "diamonds-Q",
@@ -416,7 +416,7 @@
       "color": "red",
       "name": "World Festivals & Celebrations",
       "icon": "star",
-      "hint": "e.g. Oktoberfest, Carnival, Thanksgiving..."
+      "hint": ""
     },
     {
       "id": "diamonds-K",
@@ -427,7 +427,7 @@
       "color": "red",
       "name": "Religions",
       "icon": "globe",
-      "hint": "e.g. Hinduism, Buddhism, Christianity, Islam..."
+      "hint": ""
     },
     {
       "id": "clubs-A",
@@ -438,7 +438,7 @@
       "color": "black",
       "name": "Spices",
       "icon": "carrot",
-      "hint": "e.g. Cardamom, Turmeric, Cumin, Cinnamon..."
+      "hint": ""
     },
     {
       "id": "clubs-2",
@@ -449,7 +449,7 @@
       "color": "black",
       "name": "School Subjects",
       "icon": "paperclip",
-      "hint": "e.g. Physics, History, Calculus, Geography..."
+      "hint": ""
     },
     {
       "id": "clubs-3",
@@ -460,7 +460,7 @@
       "color": "black",
       "name": "Clothing Brands",
       "icon": "tag",
-      "hint": "e.g. Zara, Nike, Gucci, Levi's..."
+      "hint": ""
     },
     {
       "id": "clubs-4",
@@ -471,7 +471,7 @@
       "color": "black",
       "name": "Makeup Products",
       "icon": "star",
-      "hint": "e.g. Lipstick, Mascara, Concealer, Eyeliner..."
+      "hint": ""
     },
     {
       "id": "clubs-5",
@@ -482,7 +482,7 @@
       "color": "black",
       "name": "Skincare Products",
       "icon": "utensils",
-      "hint": "e.g. Sunscreen, Moisturizer, Serum, Toner..."
+      "hint": ""
     },
     {
       "id": "clubs-6",
@@ -493,7 +493,7 @@
       "color": "black",
       "name": "Constellations",
       "icon": "globe",
-      "hint": "e.g. Orion, Ursa Major, Cassiopeia, Pegasus..."
+      "hint": ""
     },
     {
       "id": "clubs-7",
@@ -504,7 +504,7 @@
       "color": "black",
       "name": "Dance Styles",
       "icon": "star",
-      "hint": "e.g. Kathak, Hip Hop, Salsa, Bharatnatyam..."
+      "hint": ""
     },
     {
       "id": "clubs-8",
@@ -515,7 +515,7 @@
       "color": "black",
       "name": "Olympic Sports",
       "icon": "futbol",
-      "hint": "e.g. Archery, Javelin, Swimming, Gymnastics..."
+      "hint": ""
     },
     {
       "id": "clubs-9",
@@ -526,7 +526,7 @@
       "color": "black",
       "name": "Car Brands",
       "icon": "wrench",
-      "hint": "e.g. Porsche, Ferrari, BMW, Tesla..."
+      "hint": ""
     },
     {
       "id": "clubs-10",
@@ -537,7 +537,7 @@
       "color": "black",
       "name": "Song Titles",
       "icon": "guitar",
-      "hint": "e.g. Bohemian Rhapsody, Chaiyya Chaiyya, Shape of You..."
+      "hint": ""
     },
     {
       "id": "clubs-J",
@@ -548,7 +548,7 @@
       "color": "black",
       "name": "BITS Course Titles",
       "icon": "paperclip",
-      "hint": "e.g. DSA, Mechatronics, Microprocessors, Thermo..."
+      "hint": ""
     },
     {
       "id": "clubs-Q",
@@ -559,7 +559,7 @@
       "color": "black",
       "name": "Places inside BITS",
       "icon": "globe",
-      "hint": "e.g. ANC, Rotunda, SAC, Sky Lawns, Clock Tower..."
+      "hint": ""
     },
     {
       "id": "clubs-K",
@@ -570,7 +570,7 @@
       "color": "black",
       "name": "BITS Professor/Admin Names",
       "icon": "briefcase",
-      "hint": "e.g. Director, Dean, Campus Faculty..."
+      "hint": ""
     }
   ],
   "tunes": [
@@ -7087,5 +7087,5 @@
       ]
     }
   ],
-  "version": 4
+  "version": 5
 }

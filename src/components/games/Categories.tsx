@@ -537,7 +537,6 @@ export default function Categories({ activeTeamName, isDemo = false, onFinish, o
                   <MiniCard card={card} />
                   <div className="cat-row-text">
                     <strong>{card.name}</strong>
-                    {card.hint && <span>{card.hint}</span>}
                   </div>
                   <input
                     ref={(el) => {
