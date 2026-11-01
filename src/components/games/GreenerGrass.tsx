@@ -93,7 +93,7 @@ export default function GreenerGrass({ isDemo = false, onFinish, onBack, onUpdat
     setTimeLeft(TURN_TIMEOUT_SECONDS);
   }, []);
 
-  // 30s countdown effect
+  // 30s countdown effect per word (does NOT reset on each guess)
   useEffect(() => {
     if (hazardTriggered || wordFinished) {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -123,7 +123,7 @@ export default function GreenerGrass({ isDemo = false, onFinish, onBack, onUpdat
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [guesses.length, currentWordIdx, hazardTriggered, wordFinished, targetWord]);
+  }, [currentWordIdx, hazardTriggered, wordFinished, targetWord]);
 
   // Handle key submissions
   const handleKeyPress = useCallback((key: string) => {
@@ -211,9 +211,6 @@ export default function GreenerGrass({ isDemo = false, onFinish, onBack, onUpdat
         setSecuredIndices(updatedSecuredIndices);
       }
 
-      // Reset timer for the next guess
-      setTimeLeft(TURN_TIMEOUT_SECONDS);
-
       // HAZARD CHECK: Yellow tile terminates the current word immediately
       if (hasYellow) {
         if (timerRef.current) clearInterval(timerRef.current);
@@ -279,7 +276,7 @@ export default function GreenerGrass({ isDemo = false, onFinish, onBack, onUpdat
           title: "Greener Grass",
           score: nextTotalScore,
           roundInfo: `Word ${currentWordIdx + 1}/5`,
-          timeLeft: TURN_TIMEOUT_SECONDS,
+          timeLeft: timeLeft,
           totalTime: TURN_TIMEOUT_SECONDS,
           onEndGame: () => finishGame(nextTotalScore),
         });
@@ -633,7 +630,7 @@ export default function GreenerGrass({ isDemo = false, onFinish, onBack, onUpdat
               <div className="gg-rule-item">
                 <div className="gg-rule-icon ri-yellow">⏱</div>
                 <div>
-                  <strong>30s PER GUESS:</strong> You have 30 seconds per guess and up to 6 guesses per word. Points from green letters are secured permanently to your score!
+                  <strong>30s PER WORD:</strong> You have 30 seconds to solve each word and up to 6 guesses. Points from green letters are secured permanently to your score!
                 </div>
               </div>
             </div>
