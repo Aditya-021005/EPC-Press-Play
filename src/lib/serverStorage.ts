@@ -28,10 +28,16 @@ export interface TeamScore {
 }
 
 export function normalizeTeamRecord(team: Partial<TeamScore>): TeamScore {
-  const played = Array.isArray(team.playedGames) ? [...team.playedGames] : [];
-  for (const gk of GAME_KEYS) {
-    if (((team as any)[gk] || 0) > 0 && !played.includes(gk)) {
-      played.push(gk);
+  let played: string[];
+  if (Array.isArray(team.playedGames)) {
+    played = [...team.playedGames];
+  } else {
+    // Only infer from scores for legacy migrations if playedGames was missing
+    played = [];
+    for (const gk of GAME_KEYS) {
+      if (((team as any)[gk] || 0) > 0) {
+        played.push(gk);
+      }
     }
   }
   return {

@@ -19,13 +19,18 @@ function recalcTotal(team: TeamScore) {
   team.lastUpdated = Date.now();
 }
 
-// GET /api/tournament - Fetch current standings, public state (strips adminPin)
+const AUTOMATED_GAME_KEYS = ["greenerGrass", "realHeadline", "reverseMillionaire"] as const;
+const MANUAL_GAME_KEYS = ["nameThatTune", "categories", "offlineGame"] as const;
+const ALL_VALID_GAME_KEYS = [...AUTOMATED_GAME_KEYS, ...MANUAL_GAME_KEYS] as const;
+
+// GET /api/tournament - Fetch current standings, public state (strips adminPin & protects submissions)
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const pin = url.searchParams.get("pin");
   const state = await loadTournamentState();
 
-  const isAdmin = pin === state.adminPin;
+  const targetPin = process.env.ADMIN_PIN || state.adminPin || "pressplay";
+  const isAdmin = Boolean(pin && String(pin).trim() === targetPin);
 
   return NextResponse.json({
     success: true,
@@ -33,7 +38,8 @@ export async function GET(req: Request) {
       activeTeam: state.activeTeam,
       teams: state.teams,
       lockedGames: state.lockedGames,
-      submissions: state.submissions || {},
+      // SECURITY FIX: Only expose raw submission answers/expected solutions to verified admins
+      submissions: isAdmin ? (state.submissions || {}) : {},
       version: state.version,
       isAdmin,
     },
@@ -58,6 +64,9 @@ export async function POST(req: Request) {
     // 2. Check Game Eligibility (Check if a team has already played this game)
     if (body.action === "checkGameEligibility" && body.teamName && body.gameKey) {
       const { teamName, gameKey } = body;
+      if (!ALL_VALID_GAME_KEYS.includes(gameKey)) {
+        return NextResponse.json({ success: false, message: "Invalid game key" }, { status: 400 });
+      }
       const cleanName = String(teamName).trim().toLowerCase();
       const team = state.teams.find((t) => t.name.trim().toLowerCase() === cleanName);
       if (!team) {
@@ -76,6 +85,19 @@ export async function POST(req: Request) {
     // 3. Player Legit Game Finish (Automatic submission from completing a game round)
     if (body.action === "submitGameResult" && body.teamName && body.gameKey) {
       const { teamName, gameKey, score } = body;
+
+      // SECURITY FIX: Only automated client games can self-award scores.
+      // Name That Tune, Categories, and Offline games must be reviewed by the host.
+      if (!AUTOMATED_GAME_KEYS.includes(gameKey)) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Forbidden: "${gameKey}" requires host evaluation and cannot be self-submitted via submitGameResult.`,
+          },
+          { status: 400 }
+        );
+      }
+
       const cleanName = String(teamName).trim();
       let team = state.teams.find((t) => t.name.trim().toLowerCase() === cleanName.toLowerCase());
       if (!team && cleanName) {
@@ -126,6 +148,18 @@ export async function POST(req: Request) {
     // 4. Public Participant Action: Submit Detailed Answers for Host Manual Evaluation (e.g. Name That Tune, Categories, Offline Arena)
     if (body.action === "submitGameAnswers" && body.teamName && body.gameKey) {
       const { teamName, gameKey, items, letter } = body;
+
+      // SECURITY FIX: Only allow manual game keys and bound items array length to prevent memory DOS
+      if (!MANUAL_GAME_KEYS.includes(gameKey)) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Invalid gameKey "${gameKey}" for manual answer submission.`,
+          },
+          { status: 400 }
+        );
+      }
+
       const cleanName = String(teamName).trim();
       const cleanKey = cleanName.toLowerCase();
 
@@ -150,13 +184,16 @@ export async function POST(req: Request) {
       if (!state.submissions[cleanKey]) state.submissions[cleanKey] = {};
 
       const previous = state.submissions[cleanKey][gameKey] || {};
+      const safeItems = Array.isArray(items) ? items.slice(0, 30) : previous.items || [];
+      const safeLetter = typeof letter === "string" ? letter.slice(0, 5) : previous.letter || "";
+
       state.submissions[cleanKey][gameKey] = {
         submittedAt: Date.now(),
         evaluated: previous.evaluated || false,
         evaluatedAt: previous.evaluatedAt,
         totalScore: previous.totalScore ?? 0,
-        letter: letter || previous.letter || "",
-        items: Array.isArray(items) ? items : previous.items || [],
+        letter: safeLetter,
+        items: safeItems,
       };
 
       state.version++;

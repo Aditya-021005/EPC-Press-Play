@@ -118,13 +118,15 @@ export function setStoredAdminAuth(pin: string | null) {
 }
 
 // Backend API Fetch
-export async function fetchBackendTournamentState(): Promise<{
+export async function fetchBackendTournamentState(pin?: string): Promise<{
   activeTeam: string;
   teams: TeamScore[];
   submissions?: Record<string, Record<string, GameSubmissionRecord>>;
 } | null> {
   try {
-    const res = await fetch("/api/tournament", { cache: "no-store" });
+    const authPin = pin || getStoredAdminAuth();
+    const url = authPin ? `/api/tournament?pin=${encodeURIComponent(authPin)}` : "/api/tournament";
+    const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return null;
     const json = await res.json();
     if (json.success && json.data) {

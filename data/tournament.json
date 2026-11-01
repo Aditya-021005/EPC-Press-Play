@@ -1,5 +1,5 @@
 {
-  "activeTeam": "bjmgj,b",
+  "activeTeam": "",
   "teams": [
     {
       "name": "Hi",
@@ -195,7 +195,7 @@
       ]
     }
   ],
-  "version": 235,
+  "version": 236,
   "adminPin": "pressplay",
   "lockedGames": [],
   "submissions": {
