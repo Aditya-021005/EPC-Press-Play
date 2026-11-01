@@ -19,6 +19,7 @@ interface ArcadeHeaderProps {
     roundInfo?: string;
     timeLeft?: number;
     totalTime?: number;
+    isDemo?: boolean;
     onEndGame?: () => void;
   } | null;
 }
@@ -76,6 +77,22 @@ export default function ArcadeHeader({
               </span>
               <span className="topbar__back-text">HUB</span>
               <span className="topbar__game-tag">{gameMeta.title}</span>
+              {gameMeta.isDemo && (
+                <span
+                  style={{
+                    marginLeft: "0.4rem",
+                    padding: "0.2rem 0.55rem",
+                    borderRadius: "999px",
+                    background: "#f5af19",
+                    color: "#0d041c",
+                    fontSize: "0.72rem",
+                    fontWeight: 900,
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  DEMO RUN (0 PTS)
+                </span>
+              )}
             </button>
           ) : (
             <button type="button" className="topbar__brand" onClick={onGoHome} title="Back to the hub">
@@ -132,13 +149,28 @@ export default function ArcadeHeader({
             </span>
             <span className="topbar__meter-val">
               {gameMeta ? (
-                <>
-                  <span style={{ fontSize: "0.78rem", color: "var(--muted-paper)", marginRight: "0.35rem" }}>GAME:</span>
-                  <strong style={{ color: "var(--ink)" }}>{gameMeta.score}</strong> / 100
-                </>
+                gameMeta.isDemo ? (
+                  <>
+                    <span style={{ fontSize: "0.76rem", color: "#f5af19", marginRight: "0.25rem", fontWeight: 800 }}>PRACTICE:</span>
+                    <strong style={{ color: "var(--gold-glow, #ffd700)" }}>{gameMeta.score}</strong>/100
+                    <span style={{ margin: "0 0.4rem", color: "#cbd5e1" }}>•</span>
+                    <span style={{ fontSize: "0.76rem", color: "var(--muted-paper)", marginRight: "0.25rem" }}>TOTAL:</span>
+                    <strong style={{ color: "var(--ink)" }}>{activeTeam.total}</strong>/{MAX_TOTAL}
+                    <span style={{ marginLeft: "0.25rem", fontSize: "0.72rem", color: "#f5af19", fontWeight: 800 }}>(+0)</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: "0.76rem", color: "var(--muted-paper)", marginRight: "0.25rem" }}>GAME:</span>
+                    <strong style={{ color: "var(--gold-glow, #ffd700)" }}>{gameMeta.score}</strong>/100
+                    <span style={{ margin: "0 0.4rem", color: "#cbd5e1" }}>•</span>
+                    <span style={{ fontSize: "0.76rem", color: "var(--muted-paper)", marginRight: "0.25rem" }}>NET:</span>
+                    <strong style={{ color: "var(--ink)" }}>{activeTeam.total}</strong>/{MAX_TOTAL}
+                  </>
+                )
               ) : (
                 <>
-                  <strong>{activeTeam.total}</strong> / {MAX_TOTAL}
+                  <span style={{ fontSize: "0.76rem", color: "var(--muted-paper)", marginRight: "0.3rem" }}>NET TOTAL:</span>
+                  <strong style={{ color: "var(--ink)" }}>{activeTeam.total}</strong> / {MAX_TOTAL}
                 </>
               )}
             </span>

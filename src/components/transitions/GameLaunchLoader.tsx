@@ -19,6 +19,7 @@ import "@/styles/game-loader.css";
 interface GameLaunchLoaderProps {
   gameId: string;
   teamName: string;
+  mode?: "official" | "demo";
   onComplete: (gameId: string) => void;
 }
 
@@ -85,6 +86,7 @@ const GAME_METAS: Record<string, GameMeta> = {
 export default function GameLaunchLoader({
   gameId,
   teamName,
+  mode = "official",
   onComplete,
 }: GameLaunchLoaderProps) {
   const [progress, setProgress] = useState(15);
@@ -170,6 +172,43 @@ export default function GameLaunchLoader({
         {/* Title & Tagline */}
         <h2 className="game-loader-title">{meta.title}</h2>
         <div className="game-loader-tag">{meta.tag}</div>
+
+        {/* Run Mode Badge */}
+        <div style={{ margin: "0.4rem 0 0.8rem" }}>
+          {mode === "demo" ? (
+            <span
+              style={{
+                display: "inline-block",
+                padding: "0.3rem 0.9rem",
+                borderRadius: "999px",
+                background: "rgba(245, 175, 25, 0.2)",
+                border: "2px solid #f5af19",
+                color: "#ffd700",
+                fontWeight: 900,
+                fontSize: "0.85rem",
+                letterSpacing: "0.5px",
+              }}
+            >
+              🎯 DEMO RUN (PRACTICE MODE • 0 PTS ADDED)
+            </span>
+          ) : (
+            <span
+              style={{
+                display: "inline-block",
+                padding: "0.3rem 0.9rem",
+                borderRadius: "999px",
+                background: "rgba(34, 197, 94, 0.2)",
+                border: "2px solid #22c55e",
+                color: "#4ade80",
+                fontWeight: 900,
+                fontSize: "0.85rem",
+                letterSpacing: "0.5px",
+              }}
+            >
+              ⚡ NORMAL PLAYING (OFFICIAL TOURNAMENT RUN)
+            </span>
+          )}
+        </div>
 
         {/* Pro Tip Box */}
         <div className="game-loader-tip-box">

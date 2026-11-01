@@ -1,3 +1,78 @@
+export interface SpinnerDefinition {
+  id: string;
+  title: string;
+  shortLabel: string;
+  options: string[];
+}
+
+export const BULLSEYE_SPINNERS: SpinnerDefinition[] = [
+  {
+    id: "genre",
+    title: "1. Genre",
+    shortLabel: "Genre",
+    options: [
+      "Romance",
+      "Comedy",
+      "Thriller / Mystery",
+      "Horror",
+      "Fantasy / Sci-fi",
+      "Drama / Adventure",
+    ],
+  },
+  {
+    id: "rating",
+    title: "2. IMDb / Goodreads Rating",
+    shortLabel: "Rating",
+    options: [
+      "IMDb 4–5 / Goodreads 2–2.5",
+      "IMDb 5–6 / Goodreads 2.5–3",
+      "IMDb 6–7 / Goodreads 3–3.5",
+      "IMDb 7–8 / Goodreads 3.5–4",
+      "IMDb 8–9 / Goodreads 4–4.5",
+      "IMDb 9–10 / Goodreads 4.5–5",
+    ],
+  },
+  {
+    id: "releaseYear",
+    title: "3. Release / Publication Year",
+    shortLabel: "Release Year",
+    options: [
+      "Before 1970",
+      "1970–1989",
+      "1990–1999",
+      "2000–2009",
+      "2010–2019",
+      "2020–2026",
+    ],
+  },
+  {
+    id: "setting",
+    title: "4. Setting",
+    shortLabel: "Setting",
+    options: [
+      "School / University",
+      "Workplace",
+      "Small Town / Village",
+      "Big City / Metropolis",
+      "Historical Setting",
+      "Fictional / Fantasy World",
+    ],
+  },
+  {
+    id: "origin",
+    title: "5. Country of Origin",
+    shortLabel: "Country",
+    options: [
+      "India / Pakistan / Bangladesh",
+      "USA / Canada / Mexico",
+      "UK / Ireland / Australia",
+      "South Korea / Japan / China",
+      "France / Italy / Spain",
+      "Germany / Russia / Sweden",
+    ],
+  },
+];
+
 export interface BullseyeCategory {
   id: string;
   name: string;

@@ -33,6 +33,7 @@ export async function GET(req: Request) {
       activeTeam: state.activeTeam,
       teams: state.teams,
       lockedGames: state.lockedGames,
+      submissions: state.submissions || {},
       version: state.version,
       isAdmin,
     },
@@ -49,11 +50,30 @@ export async function POST(req: Request) {
 
     // 1. Admin Verification
     if (body.action === "verifyPin") {
-      const isValid = String(body.pin).trim() === state.adminPin;
+      const targetPin = process.env.ADMIN_PIN || state.adminPin || "pressplay";
+      const isValid = String(body.pin).trim() === targetPin;
       return NextResponse.json({ success: isValid, message: isValid ? "Admin authenticated" : "Invalid PIN" });
     }
 
-    // 2. Player Legit Game Finish (Automatic submission from completing a game round)
+    // 2. Check Game Eligibility (Check if a team has already played this game)
+    if (body.action === "checkGameEligibility" && body.teamName && body.gameKey) {
+      const { teamName, gameKey } = body;
+      const cleanName = String(teamName).trim().toLowerCase();
+      const team = state.teams.find((t) => t.name.trim().toLowerCase() === cleanName);
+      if (!team) {
+        return NextResponse.json({ success: false, message: "Team not found" }, { status: 404 });
+      }
+      const isPlayed = Array.isArray(team.playedGames) && team.playedGames.includes(gameKey);
+      return NextResponse.json({
+        success: true,
+        canPlay: !isPlayed,
+        isPlayed,
+        score: (team as unknown as Record<string, number>)[gameKey] || 0,
+        playedGames: team.playedGames || [],
+      });
+    }
+
+    // 3. Player Legit Game Finish (Automatic submission from completing a game round)
     if (body.action === "submitGameResult" && body.teamName && body.gameKey) {
       const { teamName, gameKey, score } = body;
       const cleanName = String(teamName).trim();
@@ -69,23 +89,83 @@ export async function POST(req: Request) {
           offlineGame: 0,
           total: 0,
           lastUpdated: Date.now(),
+          playedGames: [],
         };
         state.teams.push(team);
       }
       if (team) {
+        if (!Array.isArray(team.playedGames)) {
+          team.playedGames = [];
+        }
+
+        // FOOLPROOF BACKEND ENFORCEMENT: Each team can play each game once only!
+        if (team.playedGames.includes(gameKey)) {
+          return NextResponse.json(
+            {
+              success: false,
+              code: "ALREADY_PLAYED",
+              message: `Team "${team.name}" has already completed ${gameKey}. Each team gets only 1 play per game.`,
+              playedGames: team.playedGames,
+              data: state,
+            },
+            { status: 403 }
+          );
+        }
+
         const val = Math.min(100, Math.max(0, parseInt(score, 10) || 0));
-        // Keep highest or new score
-        const current = (team as unknown as Record<string, number>)[gameKey] || 0;
-        (team as unknown as Record<string, number>)[gameKey] = Math.max(current, val);
+        (team as unknown as Record<string, number>)[gameKey] = val;
+        team.playedGames.push(gameKey);
         recalcTotal(team);
         state.version++;
         await saveTournamentState(state);
+        return NextResponse.json({ success: true, data: state, playedGames: team.playedGames });
       }
+      return NextResponse.json({ success: false, message: "Team not found" }, { status: 404 });
+    }
+
+    // 4. Public Participant Action: Submit Detailed Answers for Host Manual Evaluation (e.g. Name That Tune, Categories, Offline Arena)
+    if (body.action === "submitGameAnswers" && body.teamName && body.gameKey) {
+      const { teamName, gameKey, items, letter } = body;
+      const cleanName = String(teamName).trim();
+      const cleanKey = cleanName.toLowerCase();
+
+      let team = state.teams.find((t) => t.name.trim().toLowerCase() === cleanKey);
+      if (!team && cleanName) {
+        team = {
+          name: cleanName,
+          greenerGrass: 0,
+          realHeadline: 0,
+          nameThatTune: 0,
+          categories: 0,
+          reverseMillionaire: 0,
+          offlineGame: 0,
+          total: 0,
+          lastUpdated: Date.now(),
+          playedGames: [],
+        };
+        state.teams.push(team);
+      }
+
+      if (!state.submissions) state.submissions = {};
+      if (!state.submissions[cleanKey]) state.submissions[cleanKey] = {};
+
+      const previous = state.submissions[cleanKey][gameKey] || {};
+      state.submissions[cleanKey][gameKey] = {
+        submittedAt: Date.now(),
+        evaluated: previous.evaluated || false,
+        evaluatedAt: previous.evaluatedAt,
+        totalScore: previous.totalScore ?? 0,
+        letter: letter || previous.letter || "",
+        items: Array.isArray(items) ? items : previous.items || [],
+      };
+
+      state.version++;
+      await saveTournamentState(state);
       return NextResponse.json({ success: true, data: state });
     }
 
-    // 3. Public Participant Action: Select or Register Team
-    if (body.action === "selectOrCreateTeam" && body.teamName) {
+    // 5. Public Participant Action: Select or Register Team
+    if ((body.action === "selectOrCreateTeam" || body.action === "registerTeam") && body.teamName) {
       const name = String(body.teamName).trim();
       if (name) {
         let existing = state.teams.find((t) => t.name.toLowerCase() === name.toLowerCase());
@@ -100,17 +180,20 @@ export async function POST(req: Request) {
             offlineGame: 0,
             total: 0,
             lastUpdated: Date.now(),
+            playedGames: [],
           };
           state.teams.push(existing);
         }
-        state.activeTeam = existing.name;
+        if (!body.skipSetActive) {
+          state.activeTeam = existing.name;
+        }
         state.version++;
         await saveTournamentState(state);
       }
       return NextResponse.json({ success: true, data: state });
     }
 
-    // 4. Public Participant Action: Player Logout / Finish Turn / Give Up
+    // 5. Public Participant Action: Player Logout / Finish Turn / Give Up
     if (body.action === "playerLogout") {
       const name = String(body.teamName || "").trim();
       if (!name || state.activeTeam.toLowerCase() === name.toLowerCase()) {
@@ -122,7 +205,8 @@ export async function POST(req: Request) {
     }
 
     // --- PROTECTED ADMIN ACTIONS (Require valid PIN) ---
-    const adminCheck = String(body.pin).trim() === state.adminPin;
+    const targetPin = process.env.ADMIN_PIN || state.adminPin || "pressplay";
+    const adminCheck = String(body.pin).trim() === targetPin;
     if (!adminCheck) {
       return NextResponse.json({ success: false, message: "Unauthorized: Admin PIN required" }, { status: 403 });
     }
@@ -149,6 +233,7 @@ export async function POST(req: Request) {
           offlineGame: 0,
           total: 0,
           lastUpdated: Date.now(),
+          playedGames: [],
         });
         state.activeTeam = name;
         state.version++;
@@ -180,11 +265,17 @@ export async function POST(req: Request) {
 
     // Admin: Direct Matrix Score Override (Can edit ANY score for ANY team)
     if (body.action === "adminOverrideScore" && body.teamName && body.gameKey) {
-      const { teamName, gameKey, score } = body;
-      const team = state.teams.find((t) => t.name === teamName);
+      const { teamName, gameKey, score, markPlayed } = body;
+      const team = state.teams.find((t) => t.name.toLowerCase() === String(teamName).toLowerCase());
       if (team) {
         const val = Math.min(100, Math.max(0, parseInt(score, 10) || 0));
         (team as unknown as Record<string, number>)[gameKey] = val;
+        if (!Array.isArray(team.playedGames)) team.playedGames = [];
+        if (markPlayed === true || (markPlayed === undefined && val > 0)) {
+          if (!team.playedGames.includes(gameKey)) team.playedGames.push(gameKey);
+        } else if (markPlayed === false) {
+          team.playedGames = team.playedGames.filter((k) => k !== gameKey);
+        }
         recalcTotal(team);
         state.version++;
         await saveTournamentState(state);
@@ -192,8 +283,97 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, data: state });
     }
 
+    // Admin: Detailed Item-by-Item Evaluation (Side-by-side scoring for Name That Tune, Categories, etc.)
+    if (body.action === "adminEvaluateSubmission" && body.teamName && body.gameKey) {
+      const { teamName, gameKey, items, totalScore, markPlayed, letter } = body;
+      const cleanName = String(teamName).trim();
+      const cleanKey = cleanName.toLowerCase();
+
+      let team = state.teams.find((t) => t.name.toLowerCase() === cleanKey);
+      if (!team && cleanName) {
+        team = {
+          name: cleanName,
+          greenerGrass: 0,
+          realHeadline: 0,
+          nameThatTune: 0,
+          categories: 0,
+          reverseMillionaire: 0,
+          offlineGame: 0,
+          total: 0,
+          lastUpdated: Date.now(),
+          playedGames: [],
+        };
+        state.teams.push(team);
+      }
+
+      if (team) {
+        const val = Math.min(100, Math.max(0, Number(totalScore) || 0));
+        (team as unknown as Record<string, number>)[gameKey] = val;
+
+        if (!Array.isArray(team.playedGames)) team.playedGames = [];
+        if (markPlayed !== false) {
+          if (!team.playedGames.includes(gameKey)) {
+            team.playedGames.push(gameKey);
+          }
+        }
+
+        recalcTotal(team);
+
+        if (!state.submissions) state.submissions = {};
+        if (!state.submissions[cleanKey]) state.submissions[cleanKey] = {};
+
+        const existingSub = state.submissions[cleanKey][gameKey] || {};
+        state.submissions[cleanKey][gameKey] = {
+          submittedAt: existingSub.submittedAt || Date.now(),
+          evaluatedAt: Date.now(),
+          evaluated: true,
+          totalScore: val,
+          letter: letter || existingSub.letter || "",
+          items: Array.isArray(items) ? items : existingSub.items || [],
+        };
+
+        state.version++;
+        await saveTournamentState(state);
+        return NextResponse.json({ success: true, data: state, team });
+      }
+      return NextResponse.json({ success: false, message: "Team not found" }, { status: 404 });
+    }
+
+    // Admin: Unlock or Toggle Game Played Status (Allows host to grant a replay or remove a play)
+    if (body.action === "adminToggleGamePlayed" && body.teamName && body.gameKey) {
+      const { teamName, gameKey, allowReplay, resetScore } = body;
+      const team = state.teams.find((t) => t.name.toLowerCase() === String(teamName).toLowerCase());
+      if (team) {
+        if (!Array.isArray(team.playedGames)) team.playedGames = [];
+        if (allowReplay) {
+          team.playedGames = team.playedGames.filter((k) => k !== gameKey);
+          if (resetScore) {
+            (team as any)[gameKey] = 0;
+            team.total =
+              (team.greenerGrass || 0) +
+              (team.realHeadline || 0) +
+              (team.nameThatTune || 0) +
+              (team.categories || 0) +
+              (team.reverseMillionaire || 0) +
+              (team.offlineGame || 0);
+          }
+          const cleanKey = team.name.trim().toLowerCase();
+          if (state.submissions?.[cleanKey]?.[gameKey]) {
+            delete state.submissions[cleanKey][gameKey];
+          }
+        } else if (!team.playedGames.includes(gameKey)) {
+          team.playedGames.push(gameKey);
+        }
+        state.version++;
+        await saveTournamentState(state);
+        return NextResponse.json({ success: true, data: state });
+      }
+      return NextResponse.json({ success: false, message: "Team not found" }, { status: 404 });
+    }
+
     // Admin: Reset Tournament (Scores to 0 or Full Wipe)
     if (body.action === "adminResetTournament") {
+      state.submissions = {};
       if (body.wipeRoster === true) {
         state.teams = [];
         state.activeTeam = "";
@@ -208,6 +388,7 @@ export async function POST(req: Request) {
           offlineGame: 0,
           total: 0,
           lastUpdated: Date.now(),
+          playedGames: [],
         }));
       }
       state.version++;

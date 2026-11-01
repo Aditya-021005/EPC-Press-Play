@@ -3,6 +3,17 @@ import path from "path";
 import { Redis } from "@upstash/redis";
 import { AllGameContent, getDefaultGameContent } from "./gameContent";
 
+export const GAME_KEYS = [
+  "greenerGrass",
+  "realHeadline",
+  "nameThatTune",
+  "categories",
+  "reverseMillionaire",
+  "offlineGame",
+] as const;
+
+export type GameKeyType = (typeof GAME_KEYS)[number];
+
 export interface TeamScore {
   name: string;
   greenerGrass: number;
@@ -13,6 +24,85 @@ export interface TeamScore {
   offlineGame: number;
   total: number;
   lastUpdated: number;
+  playedGames: string[];
+}
+
+export function normalizeTeamRecord(team: Partial<TeamScore>): TeamScore {
+  const played = Array.isArray(team.playedGames) ? [...team.playedGames] : [];
+  for (const gk of GAME_KEYS) {
+    if (((team as any)[gk] || 0) > 0 && !played.includes(gk)) {
+      played.push(gk);
+    }
+  }
+  return {
+    name: team.name || "Player",
+    greenerGrass: team.greenerGrass || 0,
+    realHeadline: team.realHeadline || 0,
+    nameThatTune: team.nameThatTune || 0,
+    categories: team.categories || 0,
+    reverseMillionaire: team.reverseMillionaire || 0,
+    offlineGame: team.offlineGame || 0,
+    total: team.total || 0,
+    lastUpdated: team.lastUpdated || Date.now(),
+    playedGames: played,
+  };
+}
+
+export interface NameThatTuneSubmissionItem {
+  trackIdx: number;
+  lyric: string;
+  expectedSong: string;
+  expectedArtist: string;
+  genre?: string;
+  year?: number;
+  enteredSong: string;
+  enteredArtist: string;
+  songScore?: number; // 0, 2.5, 5
+  artistScore?: number; // 0, 2.5, 5
+}
+
+export interface CategorySubmissionItem {
+  cardId: string;
+  cardName: string;
+  cardRank?: string;
+  cardSuit?: string;
+  hint?: string;
+  letter: string;
+  enteredAnswer: string;
+  score?: number; // 0, 5, 10
+}
+
+export interface BullseyeCriteriaItem {
+  id: string;
+  title: string;
+  shortLabel: string;
+  selectedOption: string;
+}
+
+export interface BullseyeSubmissionItem {
+  // 5 Spinners + 3 Answers format:
+  criteria?: BullseyeCriteriaItem[];
+  answers?: [string, string, string] | string[];
+  answerNotes?: string[];
+  answerScores?: number[];
+
+  // Legacy board format compatibility:
+  boardIdx?: number;
+  categoryName?: string;
+  hint?: string;
+  examples?: string[];
+  guesses?: [string, string, string];
+  dartPoints?: number;
+  score?: number; // 0 to 100
+}
+
+export interface GameSubmissionRecord {
+  submittedAt: number;
+  evaluated?: boolean;
+  evaluatedAt?: number;
+  totalScore?: number;
+  letter?: string;
+  items: Array<NameThatTuneSubmissionItem | CategorySubmissionItem | BullseyeSubmissionItem | any>;
 }
 
 export interface TournamentState {
@@ -20,14 +110,16 @@ export interface TournamentState {
   adminPin: string;
   lockedGames: string[];
   teams: TeamScore[];
+  submissions?: Record<string, Record<string, GameSubmissionRecord>>;
   version: number;
 }
 
 export const DEFAULT_TOURNAMENT_STATE: TournamentState = {
   activeTeam: "",
-  adminPin: process.env.ADMIN_PIN || "1234",
+  adminPin: process.env.ADMIN_PIN || "pressplay",
   lockedGames: [],
   teams: [],
+  submissions: {},
   version: 1,
 };
 
@@ -70,9 +162,11 @@ function readLocalTournamentFile(): TournamentState | null {
         if (process.env.ADMIN_PIN) {
           parsed.adminPin = process.env.ADMIN_PIN;
         } else if (!parsed.adminPin) {
-          parsed.adminPin = "1234";
+          parsed.adminPin = "pressplay";
         }
         if (!parsed.lockedGames) parsed.lockedGames = [];
+        if (!parsed.submissions) parsed.submissions = {};
+        parsed.teams = parsed.teams.map(normalizeTeamRecord);
         return parsed;
       }
     }
@@ -99,12 +193,18 @@ export async function loadTournamentState(): Promise<TournamentState> {
     try {
       const remote = await redis.get<TournamentState>("epc_tournament_state");
       if (remote && Array.isArray(remote.teams)) {
+        remote.adminPin = process.env.ADMIN_PIN || "pressplay";
+        remote.teams = remote.teams.map(normalizeTeamRecord);
+        if (!remote.submissions) remote.submissions = {};
         memoryTournamentState = remote;
         return remote;
       }
 
       // If Redis has no data yet, seed it from local file or defaults
       const seedState = readLocalTournamentFile() || memoryTournamentState || DEFAULT_TOURNAMENT_STATE;
+      seedState.adminPin = process.env.ADMIN_PIN || "pressplay";
+      seedState.teams = seedState.teams.map(normalizeTeamRecord);
+      if (!seedState.submissions) seedState.submissions = {};
       await redis.set("epc_tournament_state", seedState);
       memoryTournamentState = seedState;
       return seedState;
@@ -116,14 +216,17 @@ export async function loadTournamentState(): Promise<TournamentState> {
   // Local fallback (offline / non-Vercel dev)
   const local = readLocalTournamentFile();
   if (local) {
+    local.adminPin = process.env.ADMIN_PIN || "pressplay";
     memoryTournamentState = local;
     return local;
   }
 
+  memoryTournamentState.adminPin = process.env.ADMIN_PIN || "pressplay";
   return memoryTournamentState;
 }
 
 export async function saveTournamentState(state: TournamentState): Promise<void> {
+  state.adminPin = process.env.ADMIN_PIN || "pressplay";
   memoryTournamentState = state;
 
   if (redis) {

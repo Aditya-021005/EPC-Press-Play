@@ -1,3 +1,13 @@
+export type {
+  NameThatTuneSubmissionItem,
+  CategorySubmissionItem,
+  BullseyeSubmissionItem,
+  BullseyeCriteriaItem,
+  GameSubmissionRecord,
+} from "./serverStorage";
+
+import type { GameSubmissionRecord } from "./serverStorage";
+
 export interface TeamScore {
   name: string;
   greenerGrass: number;
@@ -8,6 +18,32 @@ export interface TeamScore {
   offlineGame: number;
   total: number;
   lastUpdated: number;
+  playedGames: string[];
+}
+
+export const ALL_GAME_KEYS = [
+  "greenerGrass",
+  "realHeadline",
+  "nameThatTune",
+  "categories",
+  "reverseMillionaire",
+  "offlineGame",
+] as const;
+
+export function isGamePlayed(team: TeamScore | undefined | null, gameKey: string): boolean {
+  if (!team) return false;
+  if (Array.isArray(team.playedGames) && team.playedGames.includes(gameKey)) {
+    return true;
+  }
+  return false;
+}
+
+export function getPlayedGamesCount(team: TeamScore | undefined | null): number {
+  if (!team) return 0;
+  if (Array.isArray(team.playedGames)) {
+    return team.playedGames.length;
+  }
+  return 0;
 }
 
 export const DEFAULT_TEAMS: TeamScore[] = [];
@@ -27,7 +63,19 @@ export function getStoredTeams(): TeamScore[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed.map((t: TeamScore) => ({ ...t, name: cleanTeamName(t.name) }));
+      return parsed.map((t: any) => {
+        const played = Array.isArray(t.playedGames) ? [...t.playedGames] : [];
+        for (const gk of ALL_GAME_KEYS) {
+          if ((t[gk] || 0) > 0 && !played.includes(gk)) {
+            played.push(gk);
+          }
+        }
+        return {
+          ...t,
+          name: cleanTeamName(t.name),
+          playedGames: played,
+        };
+      });
     }
     return [];
   } catch {
@@ -73,6 +121,7 @@ export function setStoredAdminAuth(pin: string | null) {
 export async function fetchBackendTournamentState(): Promise<{
   activeTeam: string;
   teams: TeamScore[];
+  submissions?: Record<string, Record<string, GameSubmissionRecord>>;
 } | null> {
   try {
     const res = await fetch("/api/tournament", { cache: "no-store" });
@@ -89,8 +138,41 @@ export async function fetchBackendTournamentState(): Promise<{
   return null;
 }
 
+// Check Backend Game Eligibility
+export async function checkBackendGameEligibility(
+  teamName: string,
+  gameKey: string
+): Promise<{ canPlay: boolean; isPlayed: boolean; score: number }> {
+  try {
+    const res = await fetch("/api/tournament", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "checkGameEligibility",
+        teamName,
+        gameKey,
+      }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return {
+        canPlay: json.canPlay === true,
+        isPlayed: json.isPlayed === true,
+        score: json.score || 0,
+      };
+    }
+  } catch (err) {
+    console.warn("Could not check game eligibility with backend:", err);
+  }
+  return { canPlay: true, isPlayed: false, score: 0 };
+}
+
 // Player Action: Legitimate Game Round Completion
-export async function submitPlayerGameResult(teamName: string, gameKey: string, score: number) {
+export async function submitPlayerGameResult(
+  teamName: string,
+  gameKey: string,
+  score: number
+): Promise<{ success: boolean; alreadyPlayed?: boolean; error?: string }> {
   try {
     const res = await fetch("/api/tournament", {
       method: "POST",
@@ -102,9 +184,40 @@ export async function submitPlayerGameResult(teamName: string, gameKey: string, 
         score,
       }),
     });
-    return res.ok;
+    const json = await res.json().catch(() => ({}));
+    if (res.status === 403 || json.code === "ALREADY_PLAYED") {
+      return { success: false, alreadyPlayed: true, error: json.message };
+    }
+    return { success: res.ok, error: json.message };
   } catch (err) {
     console.warn("Failed to sync score to backend:", err);
+    return { success: false, error: String(err) };
+  }
+}
+
+// Admin Action: Toggle or Unlock Game Played Status (allow replay or remove play)
+export async function adminToggleGamePlayed(
+  pin: string,
+  teamName: string,
+  gameKey: string,
+  allowReplay = false,
+  resetScore = false
+) {
+  try {
+    const res = await fetch("/api/tournament", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "adminToggleGamePlayed",
+        pin,
+        teamName,
+        gameKey,
+        allowReplay,
+        resetScore,
+      }),
+    });
+    return res.ok;
+  } catch {
     return false;
   }
 }
@@ -233,6 +346,73 @@ export async function adminOverrideScore(pin: string, teamName: string, gameKey:
   }
 }
 
+// Participant Action: Submit Detailed Answers for Host Manual Scoring
+export async function submitGameAnswers(
+  teamName: string,
+  gameKey: string,
+  payload: { items: any[]; letter?: string }
+): Promise<boolean> {
+  const clean = cleanTeamName(teamName);
+  if (!clean) return false;
+  try {
+    const res = await fetch("/api/tournament", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "submitGameAnswers",
+        teamName: clean,
+        gameKey,
+        items: payload.items,
+        letter: payload.letter,
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn("Could not submit game answers to backend:", err);
+    return false;
+  }
+}
+
+// Admin Action: Evaluate Itemized Submissions (0/2.5/5 for Tune parts, 0/5/10 for Categories)
+export async function adminEvaluateSubmission(
+  pin: string,
+  teamName: string,
+  gameKey: string,
+  items: any[],
+  totalScore: number,
+  markPlayed = true,
+  letter?: string
+): Promise<boolean> {
+  const clean = cleanTeamName(teamName);
+  try {
+    const res = await fetch("/api/tournament", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "adminEvaluateSubmission",
+        pin,
+        teamName: clean,
+        gameKey,
+        items,
+        totalScore,
+        markPlayed,
+        letter,
+      }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.data && Array.isArray(json.data.teams)) {
+        saveStoredTeams(json.data.teams);
+      }
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.warn("Could not evaluate submission on backend:", err);
+    return false;
+  }
+}
+
 // Admin Action: Reset Tournament (Scores to 0 or Full Wipe)
 export async function adminResetTournament(pin: string, wipeRoster = false) {
   try {
@@ -263,6 +443,34 @@ export async function adminResetTournament(pin: string, wipeRoster = false) {
   } catch {
     return false;
   }
+}
+
+// Registration Laptop Action: Register Team without stealing other laptops' active sessions
+export async function registerTeamOnly(teamName: string): Promise<{
+  teams: TeamScore[];
+} | null> {
+  const cleanName = cleanTeamName(teamName);
+  try {
+    const res = await fetch("/api/tournament", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "registerTeam",
+        teamName: cleanName,
+        skipSetActive: true,
+      }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        saveStoredTeams(json.data.teams);
+        return json.data;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not register team to backend:", err);
+  }
+  return null;
 }
 
 // Single-Laptop Event Action: Select or Register Active Team
@@ -308,6 +516,7 @@ export async function selectOrCreateTeam(teamName: string): Promise<{
       offlineGame: 0,
       total: 0,
       lastUpdated: Date.now(),
+      playedGames: [],
     };
     localTeams.push(existing);
     saveStoredTeams(localTeams);

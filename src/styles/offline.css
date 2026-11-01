@@ -1,80 +1,526 @@
 /* =====================================================================
-   GAME 6: OFFLINE ARENA (offline.css) — matches hub.css & theme
+   GAME 6: BULLSEYE ARENA (5 CIRCULAR WHEEL SPINNERS + 3 INPUT BOXES)
+   Theme: Arabian Nights Luxury Arcade Palette (Gold & Royal Purple)
    ===================================================================== */
 
-.offline-stage {
-  max-width: 680px;
+.bullseye-arena-wrap {
   width: 100%;
+  max-width: 1240px;
   margin: 0 auto;
+  padding: 0.5rem 1rem 3rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  gap: 1.5rem;
 }
 
-.offline-hero-card {
+/* Header Banner */
+.bullseye-hero-card {
   background: var(--paper);
-  color: var(--ink);
-  border: 3px solid var(--ink);
-  box-shadow: 8px 8px 0 var(--c-cherry);
-  border-radius: 22px;
-  padding: clamp(2rem, 5vw, 3rem);
-  text-align: center;
-  width: 100%;
-}
-
-.offline-icon-large {
-  font-size: clamp(3.5rem, 8vw, 4.5rem);
-  margin-bottom: 0.8rem;
-}
-
-.offline-hero-card h3 {
-  font-size: clamp(1.5rem, 4vw, 2.1rem);
-  font-weight: 800;
-  color: var(--ink);
-  letter-spacing: -0.01em;
-  margin-bottom: 0.8rem;
-}
-
-.offline-hero-card p {
-  color: var(--muted-paper);
-  font-size: clamp(0.95rem, 2.5vw, 1.08rem);
-  margin-bottom: 1.8rem;
-  line-height: 1.6;
-}
-
-.offline-score-form label {
-  display: block;
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--ink);
-  margin-bottom: 1rem;
-}
-
-.input-score-group {
+  border: 3.5px solid var(--ink);
+  box-shadow: 6px 6px 0 var(--gold-dark);
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.25rem 1.75rem;
   display: flex;
-  gap: 1rem;
-  justify-content: center;
   align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
   flex-wrap: wrap;
 }
 
-.input-score-group input {
-  width: 140px;
-  background: #f8fafc;
-  border: 3px solid var(--ink);
-  border-radius: 14px;
-  color: var(--ink);
-  font-size: 2.2rem;
+.bullseye-hero-title-group h2 {
+  font-size: clamp(1.4rem, 2.5vw, 1.85rem);
   font-weight: 900;
-  text-align: center;
-  padding: 0.6rem 0.8rem;
-  outline: none;
-  box-shadow: 4px 4px 0 var(--c-cherry);
-  transition: box-shadow 0.15s ease, background 0.15s ease;
+  color: var(--ink);
+  margin: 0 0 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.input-score-group input:focus {
+.bullseye-hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  background: var(--stage-3);
+  color: var(--gold-light);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: 1.5px solid var(--gold-border);
+  margin-bottom: 0.4rem;
+}
+
+.bullseye-hero-sub {
+  color: var(--muted-paper);
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* 5 WHEEL SPINNERS MACHINE CARD */
+.spinners-machine-card {
+  background: linear-gradient(180deg, #1d0a3d 0%, #14072c 100%);
+  border: 3.5px solid var(--gold-border);
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 6px 6px 0 var(--gold-dark);
+  padding: clamp(1.2rem, 2.5vw, 1.75rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.spinners-machine-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  border-bottom: 1.5px solid rgba(245, 175, 25, 0.25);
+  padding-bottom: 0.85rem;
+}
+
+.spinners-machine-badge {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: var(--gold-light);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 5 WHEELS GRID */
+.spinners-wheels-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .spinners-wheels-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .spinners-wheels-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .spinners-wheels-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* INDIVIDUAL WHEEL SPINNER CARD */
+.wheel-card {
   background: #ffffff;
-  box-shadow: 6px 6px 0 var(--c-cherry);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: 4px 4px 0 var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.85rem 0.65rem 1rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.wheel-card.is-spinning {
+  box-shadow: 0 0 20px rgba(245, 175, 25, 0.5), 4px 4px 0 var(--gold-primary);
+  border-color: var(--gold-border);
+}
+
+.wheel-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--stage-3);
+  color: var(--gold-light);
+  padding: 0.3rem 0.65rem;
+  border-radius: 9999px;
+  border: 1.5px solid var(--gold-border);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* WHEEL STAGE WITH POINTER */
+.wheel-stage {
+  position: relative;
+  width: 190px;
+  height: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.25rem 0 0.75rem;
+}
+
+@media (max-width: 1100px) {
+  .wheel-stage {
+    width: 180px;
+    height: 180px;
+  }
+}
+
+/* Top Pointer Arrow */
+.wheel-pointer {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 11px solid transparent;
+  border-right: 11px solid transparent;
+  border-top: 18px solid var(--gold-primary);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+  z-index: 10;
+  pointer-events: none;
+}
+
+.wheel-pointer::after {
+  content: "";
+  position: absolute;
+  top: -20px;
+  left: -8px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 13px solid #fff;
+}
+
+/* The Rotating Wheel SVG Wrapper */
+.wheel-rotor {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), inset 0 0 0 3px var(--ink);
+  overflow: hidden;
+  will-change: transform;
+}
+
+.wheel-rotor svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Landed Option Badge Under Wheel */
+.wheel-landed-badge {
+  width: 100%;
+  min-height: 48px;
+  background: #fffdf5;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  padding: 0.45rem 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 900;
+  color: var(--ink);
+  line-height: 1.25;
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.wheel-card.is-spinning .wheel-landed-badge {
+  background: #f1f5f9;
+  color: #64748b;
+  box-shadow: none;
+  font-style: italic;
+}
+
+/* SPIN ALL CTA BUTTON */
+.spin-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-top: 0.5rem;
+}
+
+.btn-spin-all {
+  padding: 1rem 2.4rem;
+  background: var(--gold-gradient);
+  color: var(--ink);
+  border: 3.5px solid var(--ink);
+  border-radius: 14px;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 5px 5px 0 var(--ink);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.btn-spin-all:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 var(--ink);
+}
+
+.btn-spin-all:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.btn-spin-all:disabled {
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+/* CRITERIA SUMMARY STRIP */
+.criteria-summary-banner {
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--gold-primary);
+  border-radius: 14px;
+  padding: 1rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.criteria-banner-title {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted-paper);
+}
+
+.criteria-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.criteria-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  background: var(--stage-3);
+  color: var(--on-stage);
+  border: 2px solid var(--gold-border);
+  border-radius: 9999px;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.criteria-pill-label {
+  color: var(--gold-bright);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+/* 3 ANSWERS INPUT SECTION */
+.answers-section-card {
+  background: var(--paper);
+  border: 3.5px solid var(--ink);
+  border-radius: 20px;
+  box-shadow: 6px 6px 0 var(--ink);
+  padding: clamp(1.4rem, 3vw, 2rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.answers-section-header h3 {
+  font-size: clamp(1.25rem, 2.2vw, 1.55rem);
+  font-weight: 900;
+  color: var(--ink);
+  margin: 0 0 0.35rem;
+}
+
+.answers-section-header p {
+  color: var(--muted-paper);
+  font-size: 0.92rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* 3 ANSWER CARDS */
+.answer-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.answer-card {
+  background: #fdfdfe;
+  border: 2.5px solid var(--ink);
+  border-radius: 14px;
+  padding: 1.15rem 1.35rem;
+  box-shadow: 3px 3px 0 var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.answer-card:focus-within {
+  border-color: var(--gold-border);
+  box-shadow: 4px 4px 0 var(--gold-primary);
+}
+
+.answer-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.answer-card-badge {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 900;
+  background: var(--gold-gradient);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+  padding: 0.2rem 0.55rem;
+  letter-spacing: 0.5px;
+}
+
+.answer-card-hint {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted-paper);
+}
+
+.answer-input-title {
+  width: 100%;
+  padding: 0.85rem 1.1rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink);
+  background: #ffffff;
+  border: 2.5px solid var(--ink);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.answer-input-title:focus {
+  border-color: var(--gold-dark);
+}
+
+.answer-input-notes {
+  width: 100%;
+  padding: 0.65rem 0.95rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #334155;
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  resize: vertical;
+  min-height: 48px;
+}
+
+.answer-input-notes:focus {
+  border-color: var(--gold-border);
+  background: #ffffff;
+}
+
+/* SUBMIT BAR */
+.bullseye-submit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-top: 0.5rem;
+  border-top: 2px solid #e2e8f0;
+}
+
+.btn-submit-bullseye {
+  padding: 1rem 2.2rem;
+  background: #10b981;
+  color: #ffffff;
+  border: 3px solid var(--ink);
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.btn-submit-bullseye:hover:not(:disabled) {
+  background: #059669;
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.btn-submit-bullseye:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+/* SUBMITTED CONFIRMATION CARD */
+.bullseye-submitted-card {
+  background: var(--paper);
+  border: 3.5px solid var(--ink);
+  border-radius: 20px;
+  box-shadow: 6px 6px 0 var(--ink);
+  padding: clamp(2rem, 5vw, 3rem);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.submitted-badge-check {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #16a34a;
+  border: 3px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  box-shadow: 4px 4px 0 var(--ink);
 }

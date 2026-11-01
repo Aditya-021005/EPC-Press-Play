@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const tournament = await loadTournamentState();
-    const adminPin = tournament.adminPin || "1234";
+    const adminPin = tournament.adminPin || "pressplay";
 
     if (String(body.pin).trim() !== adminPin) {
       return NextResponse.json(

@@ -489,3 +489,194 @@
   color: #0d041c;
   border-color: var(--gold-dark);
 }
+
+/* ========================================================================= */
+/* LIVE EVALUATOR SCORER & SIDE-BY-SIDE EVALUATION CARDS                     */
+/* ========================================================================= */
+
+.eval-tabs-bar {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 2px dashed #e2e8f0;
+}
+
+.eval-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 12px;
+  border: 2px solid var(--ink);
+  background: #ffffff;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--ink);
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.eval-tab-btn:hover {
+  background: #fdfaf0;
+  transform: translateY(-1px);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.eval-tab-btn.is-active {
+  background: var(--c-sun);
+  border-color: var(--ink);
+  box-shadow: 3px 3px 0 var(--gold-dark);
+}
+
+.eval-summary-card {
+  background: #fffdf5;
+  border: 3px solid var(--gold-primary);
+  box-shadow: 5px 5px 0 var(--gold-dark);
+  border-radius: 18px;
+  padding: 1.2rem 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.eval-total-display {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.eval-total-num {
+  font-family: var(--font-mono);
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--gold-dark);
+  line-height: 1;
+}
+
+.eval-total-max {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.eval-side-by-side-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 1.8rem;
+}
+
+.eval-card {
+  background: #ffffff;
+  border: 3px solid var(--ink);
+  box-shadow: 5px 5px 0 var(--ink);
+  border-radius: 18px;
+  padding: 1.25rem;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 1.25rem;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+@media (max-width: 900px) {
+  .eval-card {
+    grid-template-columns: 1fr;
+  }
+}
+
+.eval-box-expected {
+  background: #f8fafc;
+  border: 2px solid #cbd5e1;
+  border-radius: 14px;
+  padding: 1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.eval-box-submission {
+  background: #fffef9;
+  border: 2px solid var(--gold-primary);
+  border-radius: 14px;
+  padding: 1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.eval-part-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.eval-part-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.eval-pill-group {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.eval-score-btn {
+  padding: 0.45rem 0.85rem;
+  border-radius: 10px;
+  border: 2px solid var(--ink);
+  background: #f1f5f9;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-weight: 900;
+  font-size: 0.84rem;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--ink);
+  transition: all 0.12s ease;
+}
+
+.eval-score-btn:hover {
+  background: #e2e8f0;
+  transform: translateY(-1px);
+}
+
+.eval-score-btn.is-selected {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #065f46;
+  box-shadow: 2px 2px 0 #065f46;
+}
+
+.eval-score-btn.is-selected-gold {
+  background: var(--c-sun);
+  color: var(--ink);
+  border-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--gold-dark);
+}
+
+.eval-score-btn.is-selected-zero {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #991b1b;
+  box-shadow: 2px 2px 0 #7f1d1d;
+}
+
+.eval-score-btn.is-selected-half {
+  background: #f59e0b;
+  color: #ffffff;
+  border-color: #b45309;
+  box-shadow: 2px 2px 0 #92400e;
+}

@@ -11,19 +11,17 @@
   --muted-stage: #c8b8ec;
   --muted-paper: #5d4680;
   --c-sun: #f5af19;
-  --c-grass: #10b981;
-  --c-coin: #f59e0b;
+  --c-grass: #ffd700;
+  --c-coin: #e69500;
 
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(20, 7, 44, 0.95);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: #14072c;
   color: var(--on-stage);
   font-family: var(--font-hub), ui-sans-serif, system-ui, sans-serif;
   border-bottom: 2.5px solid var(--gold-primary);
-  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.5), 0 0 16px rgba(245, 175, 25, 0.25);
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.6), 0 0 16px rgba(245, 175, 25, 0.25);
 }
 
 .topbar *,
@@ -88,10 +86,10 @@
 }
 
 .topbar__timer.is-urgent {
-  background: #fee2e2;
-  border-color: var(--c-cherry);
-  color: var(--c-cherry);
-  box-shadow: 0 0 14px rgba(244, 63, 94, 0.45), 3px 3px 0 var(--ink);
+  background: #fff8e1;
+  border-color: var(--gold-primary);
+  color: #8c5d07;
+  box-shadow: 0 0 14px rgba(245, 175, 25, 0.6), 3px 3px 0 var(--ink);
   animation: pulseTimerUrgent 0.6s infinite alternate;
 }
 
@@ -104,8 +102,8 @@
   width: 28px;
   height: 28px;
   border-radius: 7px;
-  background: var(--c-grass);
-  color: #ffffff;
+  background: var(--gold-gradient);
+  color: #0d041c;
   border: 1.5px solid var(--ink);
   display: flex;
   align-items: center;
@@ -115,7 +113,8 @@
 }
 
 .topbar__timer.is-urgent .topbar__timer-icon {
-  background: var(--c-cherry);
+  background: var(--gold-glow);
+  color: #0d041c;
 }
 
 .topbar__timer-info {

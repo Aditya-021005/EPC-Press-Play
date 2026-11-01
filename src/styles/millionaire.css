@@ -193,6 +193,21 @@
   color: var(--muted-paper);
 }
 
+.podium-coin-input:focus {
+  border-color: var(--gold-primary, #f5af19) !important;
+  box-shadow: 0 0 0 3px rgba(245, 175, 25, 0.35) !important;
+}
+
+/* Hide spin buttons for cleaner appearance */
+.podium-coin-input::-webkit-outer-spin-button,
+.podium-coin-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.podium-coin-input[type=number] {
+  -moz-appearance: textfield;
+}
+
 .podium-steppers {
   display: flex;
   gap: 4px;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   TeamScore,
   verifyAdminPin,
@@ -10,6 +10,14 @@ import {
   adminDeleteTeam,
   adminResetTournament,
   adminWipeAllTeams,
+  adminToggleGamePlayed,
+  adminEvaluateSubmission,
+  isGamePlayed,
+  getPlayedGamesCount,
+  GameSubmissionRecord,
+  NameThatTuneSubmissionItem,
+  CategorySubmissionItem,
+  BullseyeSubmissionItem,
 } from "@/lib/tournamentState";
 import {
   AllGameContent,
@@ -17,11 +25,11 @@ import {
   updateGameContentSection,
   getDefaultGameContent,
 } from "@/lib/gameContent";
-import { CategoryCard, CardSuit } from "@/data/categories";
-import { TuneItem } from "@/data/tunes";
+import { CategoryCard, CardSuit, validateCategoryAnswer } from "@/data/categories";
+import { TuneItem, TUNES_POOL } from "@/data/tunes";
 import { HeadlineItem } from "@/data/headlines";
 import { MillionaireQuestion } from "@/data/millionaire";
-import { BullseyeCategory } from "@/data/bullseye";
+import { BullseyeCategory, BULLSEYE_SPINNERS } from "@/data/bullseye";
 import { sound } from "@/lib/audio";
 import confetti from "canvas-confetti";
 import "@/styles/admin.css";
@@ -48,12 +56,18 @@ import {
   faRotate,
   faPenToSquare,
   faUsers,
+  faClipboardCheck,
+  faStar,
+  faWandMagicSparkles,
+  faCircleCheck,
+  faCircleXmark,
 } from "@fortawesome/free-solid-svg-icons";
 
 interface AdminPanelProps {
   teams: TeamScore[];
   activeTeamName: string;
   adminPin: string | null;
+  submissions?: Record<string, Record<string, GameSubmissionRecord>>;
   onAdminAuth: (pin: string | null) => void;
   onRefresh: () => void;
   onClose: () => void;
@@ -74,6 +88,7 @@ export default function AdminPanel({
   teams,
   activeTeamName,
   adminPin,
+  submissions = {},
   onAdminAuth,
   onRefresh,
   onClose,
@@ -87,6 +102,19 @@ export default function AdminPanel({
   const [mainTab, setMainTab] = useState<AdminMainTab>("scoring");
   const [contentSubTab, setContentSubTab] = useState<ContentGameSubTab>("categories");
   const [suitFilter, setSuitFilter] = useState<CardSuit | "all">("all");
+
+  // Evaluator Mode Tab: "nameThatTune" | "categories" | "offlineGame" | "quickTiles"
+  const [evaluatorGameTab, setEvaluatorGameTab] = useState<"nameThatTune" | "categories" | "offlineGame" | "quickTiles">("nameThatTune");
+  const [markPlayedOnSave, setMarkPlayedOnSave] = useState(true);
+  const [isSavingEvaluation, setIsSavingEvaluation] = useState(false);
+
+  // Granular item scores per team:
+  // Tune: teamKey -> array of { song: number (0, 2.5, 5), artist: number (0, 2.5, 5) }
+  const [tuneScores, setTuneScores] = useState<Record<string, { song: number; artist: number }[]>>({});
+  // Categories: teamKey -> array of numbers (0, 5, 10)
+  const [catScores, setCatScores] = useState<Record<string, number[]>>({});
+  // Bullseye: teamKey -> array of numbers (0-20)
+  const [offlineScores, setOfflineScores] = useState<Record<string, number[]>>({});
 
   // Score override state: teamName -> gameKey -> value
   const [overrideData, setOverrideData] = useState<Record<string, Record<string, number>>>({});
@@ -187,6 +215,332 @@ export default function AdminPanel({
     if (ok) {
       flashMessage(`Awarded ${score} pts in ${gameKey} to ${teamName}!`);
       onRefresh();
+    }
+  };
+
+  const handleToggleUnlock = async (
+    teamName: string,
+    gameKey: string,
+    currentlyPlayed: boolean,
+    resetScore = false
+  ) => {
+    if (!adminPin) return;
+    sound.playClick();
+    if (currentlyPlayed) {
+      const confirmRemove = window.confirm(
+        `Remove play for ${gameKey} on ${teamName}? This will reset played status, unlock replay access for the team, and clear previous submissions.`
+      );
+      if (!confirmRemove) return;
+    }
+    const ok = await adminToggleGamePlayed(adminPin, teamName, gameKey, currentlyPlayed, resetScore);
+    if (ok) {
+      flashMessage(
+        currentlyPlayed
+          ? `Removed play for ${gameKey} on ${teamName} (Replay Allowed)!`
+          : `Marked ${gameKey} as Played for ${teamName}!`
+      );
+      onRefresh();
+    }
+  };
+
+  // -------------------------------------------------------------
+  // MANUAL EVALUATION CALCULATIONS & HANDLERS
+  // -------------------------------------------------------------
+  const cleanTeamKey = (selectedScoringTeam || "").trim().toLowerCase();
+
+  // 1. Name That Tune Data
+  const tuneSubRecord = submissions[cleanTeamKey]?.nameThatTune;
+  const tuneItems: NameThatTuneSubmissionItem[] = useMemo(() => {
+    if (tuneSubRecord?.items && Array.isArray(tuneSubRecord.items) && tuneSubRecord.items.length > 0) {
+      return tuneSubRecord.items;
+    }
+    const pool = (gameContent.tunes && gameContent.tunes.length > 0 ? gameContent.tunes : TUNES_POOL).slice(0, 10);
+    return pool.map((t, idx) => ({
+      trackIdx: idx,
+      lyric: t.lyric,
+      expectedSong: t.song,
+      expectedArtist: t.artist,
+      genre: t.genre,
+      year: t.year,
+      enteredSong: "",
+      enteredArtist: "",
+      songScore: 0,
+      artistScore: 0,
+    }));
+  }, [tuneSubRecord, gameContent.tunes]);
+
+  const currentTuneScores = tuneScores[cleanTeamKey] || tuneItems.map((it) => ({
+    song: it.songScore ?? 0,
+    artist: it.artistScore ?? 0,
+  }));
+
+  const tuneTotalScore = currentTuneScores.reduce(
+    (acc, cur) => acc + (cur?.song || 0) + (cur?.artist || 0),
+    0
+  );
+
+  const handleTuneScoreChange = (trackIdx: number, part: "song" | "artist", val: number) => {
+    sound.playClick(val === 5 ? 750 : val === 2.5 ? 650 : 500);
+    setTuneScores((prev) => {
+      const existing = prev[cleanTeamKey] ? [...prev[cleanTeamKey]] : tuneItems.map((it) => ({
+        song: it.songScore ?? 0,
+        artist: it.artistScore ?? 0,
+      }));
+      while (existing.length <= trackIdx) {
+        existing.push({ song: 0, artist: 0 });
+      }
+      existing[trackIdx] = {
+        ...existing[trackIdx],
+        [part]: val,
+      };
+      return {
+        ...prev,
+        [cleanTeamKey]: existing,
+      };
+    });
+  };
+
+  const handleAutoGradeTune = () => {
+    sound.playClick(700);
+    const newScores = tuneItems.map((it) => {
+      const cleanExpectedSong = it.expectedSong.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const cleanEnteredSong = (it.enteredSong || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      let sScore = 0;
+      if (cleanEnteredSong && cleanExpectedSong === cleanEnteredSong) {
+        sScore = 5;
+      } else if (cleanEnteredSong && (cleanExpectedSong.includes(cleanEnteredSong) || cleanEnteredSong.includes(cleanExpectedSong))) {
+        sScore = 2.5;
+      }
+
+      const cleanExpectedArtist = it.expectedArtist.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const cleanEnteredArtist = (it.enteredArtist || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      let aScore = 0;
+      if (cleanEnteredArtist && cleanExpectedArtist === cleanEnteredArtist) {
+        aScore = 5;
+      } else if (cleanEnteredArtist && (cleanExpectedArtist.includes(cleanEnteredArtist) || cleanEnteredArtist.includes(cleanExpectedArtist))) {
+        aScore = 2.5;
+      }
+
+      return { song: sScore, artist: aScore };
+    });
+
+    setTuneScores((prev) => ({
+      ...prev,
+      [cleanTeamKey]: newScores,
+    }));
+    flashMessage(`Auto-graded ${tuneItems.length} tracks based on matches!`);
+  };
+
+  const handleSaveTuneEvaluation = async () => {
+    if (!adminPin || !selectedScoringTeam) return;
+    setIsSavingEvaluation(true);
+    sound.playSuccess();
+    confetti({ particleCount: 70, spread: 60 });
+
+    const evaluatedItems: NameThatTuneSubmissionItem[] = tuneItems.map((it, idx) => ({
+      ...it,
+      songScore: currentTuneScores[idx]?.song ?? 0,
+      artistScore: currentTuneScores[idx]?.artist ?? 0,
+    }));
+
+    const ok = await adminEvaluateSubmission(
+      adminPin,
+      selectedScoringTeam,
+      "nameThatTune",
+      evaluatedItems,
+      tuneTotalScore,
+      markPlayedOnSave
+    );
+    setIsSavingEvaluation(false);
+
+    if (ok) {
+      flashMessage(`Saved Name That Tune score: ${tuneTotalScore} pts for ${selectedScoringTeam}!`);
+      onRefresh();
+    } else {
+      sound.playBuzzer();
+      flashMessage("Error saving evaluation to server.");
+    }
+  };
+
+  // 2. Categories Data
+  const catSubRecord = submissions[cleanTeamKey]?.categories;
+  const activeLetter = catSubRecord?.letter || "A";
+  const catItems: CategorySubmissionItem[] = useMemo(() => {
+    if (catSubRecord?.items && Array.isArray(catSubRecord.items) && catSubRecord.items.length > 0) {
+      return catSubRecord.items;
+    }
+    const pool = (gameContent.categories && gameContent.categories.length > 0 ? gameContent.categories : []).slice(0, 10);
+    return pool.map((c) => ({
+      cardId: c.id,
+      cardName: c.name,
+      cardRank: c.rank,
+      cardSuit: c.suit,
+      hint: c.hint,
+      letter: activeLetter,
+      enteredAnswer: "",
+      score: 0,
+    }));
+  }, [catSubRecord, gameContent.categories, activeLetter]);
+
+  const currentCatScores = catScores[cleanTeamKey] || catItems.map((it) => it.score ?? 0);
+  const catTotalScore = currentCatScores.reduce((acc, s) => acc + (s || 0), 0);
+
+  const handleCatScoreChange = (idx: number, val: 0 | 5 | 10) => {
+    sound.playClick(val === 10 ? 750 : val === 5 ? 650 : 500);
+    setCatScores((prev) => {
+      const existing = prev[cleanTeamKey] ? [...prev[cleanTeamKey]] : catItems.map((it) => it.score ?? 0);
+      while (existing.length <= idx) existing.push(0);
+      existing[idx] = val;
+      return {
+        ...prev,
+        [cleanTeamKey]: existing,
+      };
+    });
+  };
+
+  const handleAutoGradeCategories = () => {
+    sound.playClick(700);
+    const newScores = catItems.map((it) => {
+      const ans = (it.enteredAnswer || "").trim();
+      const validation = validateCategoryAnswer(ans, it.letter || activeLetter);
+      return validation.valid ? 10 : 0;
+    });
+    setCatScores((prev) => ({
+      ...prev,
+      [cleanTeamKey]: newScores,
+    }));
+    flashMessage(`Auto-graded ${catItems.length} categories based on letter '${activeLetter}'!`);
+  };
+
+  const handleSaveCatEvaluation = async () => {
+    if (!adminPin || !selectedScoringTeam) return;
+    setIsSavingEvaluation(true);
+    sound.playSuccess();
+    confetti({ particleCount: 70, spread: 60 });
+
+    const evaluatedItems: CategorySubmissionItem[] = catItems.map((it, idx) => ({
+      ...it,
+      score: currentCatScores[idx] ?? 0,
+    }));
+
+    const ok = await adminEvaluateSubmission(
+      adminPin,
+      selectedScoringTeam,
+      "categories",
+      evaluatedItems,
+      catTotalScore,
+      markPlayedOnSave,
+      activeLetter
+    );
+    setIsSavingEvaluation(false);
+
+    if (ok) {
+      flashMessage(`Saved Categories score: ${catTotalScore} pts for ${selectedScoringTeam}!`);
+      onRefresh();
+    } else {
+      sound.playBuzzer();
+      flashMessage("Error saving categories evaluation to server.");
+    }
+  };
+
+  // 3. Bullseye Data (5 Spinners + 3 Answers)
+  const offlineSubRecord = submissions[cleanTeamKey]?.offlineGame;
+  const offlineItems: BullseyeSubmissionItem[] = useMemo(() => {
+    if (offlineSubRecord?.items && Array.isArray(offlineSubRecord.items) && offlineSubRecord.items.length > 0) {
+      return offlineSubRecord.items;
+    }
+    // Default 5-spinner submission structure
+    return [
+      {
+        criteria: BULLSEYE_SPINNERS.map((sp) => ({
+          id: sp.id,
+          title: sp.title,
+          shortLabel: sp.shortLabel,
+          selectedOption: sp.options[0],
+        })),
+        answers: ["", "", ""],
+        answerNotes: ["", "", ""],
+        guesses: ["", "", ""],
+        categoryName: "5 Simultaneous Spinners",
+        hint: "Genre • Rating • Year • Setting • Country",
+        score: 0,
+      },
+    ];
+  }, [offlineSubRecord]);
+
+  const isSpinnerSubmission = Boolean(offlineItems[0]?.criteria && offlineItems[0].criteria.length > 0);
+
+  const currentOfflineScores = useMemo(() => {
+    if (offlineScores[cleanTeamKey]) {
+      return offlineScores[cleanTeamKey];
+    }
+    if (isSpinnerSubmission) {
+      const saved = offlineItems[0]?.answerScores;
+      if (Array.isArray(saved) && saved.length > 0) return saved;
+      return [0, 0, 0];
+    }
+    return offlineItems.map((it) => it.score ?? 0);
+  }, [offlineScores, cleanTeamKey, isSpinnerSubmission, offlineItems]);
+
+  const offlineTotalScore = isSpinnerSubmission
+    ? Math.min(100, Math.round(((currentOfflineScores[0] || 0) + (currentOfflineScores[1] || 0) + (currentOfflineScores[2] || 0)) * 10) / 10)
+    : Math.min(100, currentOfflineScores.reduce((acc, s) => acc + (s || 0), 0));
+
+  const handleOfflineScoreChange = (idx: number, val: number) => {
+    sound.playClick(650);
+    setOfflineScores((prev) => {
+      const existing = prev[cleanTeamKey]
+        ? [...prev[cleanTeamKey]]
+        : (isSpinnerSubmission ? (offlineItems[0]?.answerScores || [0, 0, 0]) : offlineItems.map((it) => it.score ?? 0));
+      const next = [...existing];
+      while (next.length <= idx) next.push(0);
+      next[idx] = val;
+      return {
+        ...prev,
+        [cleanTeamKey]: next,
+      };
+    });
+  };
+
+  const handleSaveOfflineEvaluation = async () => {
+    if (!adminPin || !selectedScoringTeam) return;
+    setIsSavingEvaluation(true);
+    sound.playSuccess();
+    confetti({ particleCount: 70, spread: 60 });
+
+    const evaluatedItems: BullseyeSubmissionItem[] = isSpinnerSubmission
+      ? [
+          {
+            ...offlineItems[0],
+            answerScores: [
+              currentOfflineScores[0] || 0,
+              currentOfflineScores[1] || 0,
+              currentOfflineScores[2] || 0,
+            ],
+            score: offlineTotalScore,
+          },
+        ]
+      : offlineItems.map((it, idx) => ({
+          ...it,
+          score: currentOfflineScores[idx] ?? 0,
+        }));
+
+    const ok = await adminEvaluateSubmission(
+      adminPin,
+      selectedScoringTeam,
+      "offlineGame",
+      evaluatedItems,
+      offlineTotalScore,
+      markPlayedOnSave
+    );
+    setIsSavingEvaluation(false);
+
+    if (ok) {
+      flashMessage(`Saved Bullseye score: ${offlineTotalScore} pts for ${selectedScoringTeam}!`);
+      onRefresh();
+    } else {
+      sound.playBuzzer();
+      flashMessage("Error saving offline evaluation to server.");
     }
   };
 
@@ -506,15 +860,14 @@ export default function AdminPanel({
                     marginBottom: "0.5rem",
                   }}
                 >
-                  Enter Host PIN:
+                  Enter Host Password / PIN:
                 </label>
                 <div style={{ position: "relative" }}>
                   <input
                     id="host-pin-field"
                     type={showPin ? "text" : "password"}
-                    inputMode="numeric"
-                    maxLength={8}
-                    placeholder="••••"
+                    maxLength={64}
+                    placeholder="Enter host password..."
                     value={enteredPin}
                     onChange={(e) => setEnteredPin(e.target.value)}
                     className="admin-pin-input"
@@ -704,12 +1057,12 @@ export default function AdminPanel({
           <div>
             {/* Active Team Scoring Pad */}
             <div className="admin-section" style={{ marginBottom: "1.5rem" }}>
-              <span className="admin-badge">LIVE EVALUATOR SCORER</span>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
+              <span className="admin-badge">LIVE EVALUATOR & MANUAL SCORER</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1.2rem" }}>
                 <div>
-                  <h3 className="admin-section-title">Award Points to Active Team</h3>
+                  <h3 className="admin-section-title">Manual Scoring & Evaluation Console</h3>
                   <p className="admin-section-sub">
-                    Select a team and award scores for evaluated challenges. Updates sync in real time to the player laptop.
+                    View official questions side-by-side with team submissions. Grade tracks and cards with 1-click precision (0, 2.5, 5 for Tune; 0, 5, 10 for Categories).
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexWrap: "wrap" }}>
@@ -722,13 +1075,17 @@ export default function AdminPanel({
                       value={selectedScoringTeam}
                       onChange={(e) => setSelectedScoringTeam(e.target.value)}
                       className="admin-input-sm"
-                      style={{ minWidth: "160px", padding: "0.6rem" }}
+                      style={{ minWidth: "180px", padding: "0.6rem" }}
                     >
-                      {teams.map((t) => (
-                        <option key={t.name} value={t.name}>
-                          {t.name} ({t.total} pts) {t.name === currentActiveTeam ? "★ STAGE ACTIVE" : ""}
-                        </option>
-                      ))}
+                      {teams.map((t) => {
+                        const hasTune = Boolean(submissions[t.name.toLowerCase()]?.nameThatTune);
+                        const hasCat = Boolean(submissions[t.name.toLowerCase()]?.categories);
+                        return (
+                          <option key={t.name} value={t.name}>
+                            {t.name} ({t.total} pts){hasTune || hasCat ? " • 🟡 Submitted" : ""}{t.name === currentActiveTeam ? " ★ STAGE ACTIVE" : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
 
@@ -766,224 +1123,1247 @@ export default function AdminPanel({
                 </div>
               </div>
 
-              {/* 6 Game Scoring Tiles for Selected Team */}
-              {activeScoringTeamData ? (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem" }}>
-                  {/* 1. Greener Grass */}
-                  <div className="admin-card-item">
-                    <div className="admin-card-item-header">
-                      <strong>
-                        <FontAwesomeIcon icon={faLeaf} style={{ color: "var(--c-grass)", marginRight: "0.4rem" }} />
-                        Greener Grass
-                      </strong>
-                      <span style={{ fontWeight: 900 }}>{activeScoringTeamData.greenerGrass}/100 PTS</span>
-                    </div>
-                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        className="admin-score-input"
-                        value={overrideData[activeScoringTeamData.name]?.greenerGrass ?? activeScoringTeamData.greenerGrass}
-                        onChange={(e) => handleScoreChange(activeScoringTeamData.name, "greenerGrass", e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="btn-action btn-gold"
-                        style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
-                        onClick={() => handleSaveScore(activeScoringTeamData.name, "greenerGrass")}
-                      >
-                        Award Score
-                      </button>
-                    </div>
-                  </div>
+              {/* Evaluator Mode Tabs */}
+              <div className="eval-tabs-bar" role="tablist">
+                <button
+                  type="button"
+                  className={`eval-tab-btn ${evaluatorGameTab === "nameThatTune" ? "is-active" : ""}`}
+                  onClick={() => {
+                    sound.playClick();
+                    setEvaluatorGameTab("nameThatTune");
+                  }}
+                >
+                  <FontAwesomeIcon icon={faMusic} style={{ color: "var(--c-sky)" }} />
+                  Name That Tune
+                  {tuneSubRecord ? (
+                    <span style={{ fontSize: "0.72rem", padding: "0.15rem 0.45rem", borderRadius: "999px", background: "#10b981", color: "#fff", fontWeight: 900 }}>
+                      ✓ 10 Submitted
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "0.72rem", padding: "0.15rem 0.45rem", borderRadius: "999px", background: "#f1f5f9", color: "#64748b", fontWeight: 800 }}>
+                      Live Stage
+                    </span>
+                  )}
+                </button>
 
-                  {/* 2. Real Headline */}
-                  <div className="admin-card-item">
-                    <div className="admin-card-item-header">
-                      <strong>
-                        <FontAwesomeIcon icon={faNewspaper} style={{ color: "var(--c-sun)", marginRight: "0.4rem" }} />
-                        Real Headline or Not
-                      </strong>
-                      <span style={{ fontWeight: 900 }}>{activeScoringTeamData.realHeadline}/100 PTS</span>
-                    </div>
-                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        className="admin-score-input"
-                        value={overrideData[activeScoringTeamData.name]?.realHeadline ?? activeScoringTeamData.realHeadline}
-                        onChange={(e) => handleScoreChange(activeScoringTeamData.name, "realHeadline", e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="btn-action btn-gold"
-                        style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
-                        onClick={() => handleSaveScore(activeScoringTeamData.name, "realHeadline")}
-                      >
-                        Award Score
-                      </button>
-                    </div>
-                  </div>
+                <button
+                  type="button"
+                  className={`eval-tab-btn ${evaluatorGameTab === "categories" ? "is-active" : ""}`}
+                  onClick={() => {
+                    sound.playClick();
+                    setEvaluatorGameTab("categories");
+                  }}
+                >
+                  <FontAwesomeIcon icon={faLayerGroup} style={{ color: "var(--c-grape)" }} />
+                  Categories (Scattergories)
+                  {catSubRecord ? (
+                    <span style={{ fontSize: "0.72rem", padding: "0.15rem 0.45rem", borderRadius: "999px", background: "#10b981", color: "#fff", fontWeight: 900 }}>
+                      ✓ 10 Submitted
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "0.72rem", padding: "0.15rem 0.45rem", borderRadius: "999px", background: "#f1f5f9", color: "#64748b", fontWeight: 800 }}>
+                      Live Stage
+                    </span>
+                  )}
+                </button>
 
-                  {/* 3. Name That Tune */}
-                  <div className="admin-card-item">
-                    <div className="admin-card-item-header">
-                      <strong>
-                        <FontAwesomeIcon icon={faMusic} style={{ color: "var(--c-sky)", marginRight: "0.4rem" }} />
-                        Name That Tune
-                      </strong>
-                      <span style={{ fontWeight: 900 }}>{activeScoringTeamData.nameThatTune}/100 PTS</span>
+                <button
+                  type="button"
+                  className={`eval-tab-btn ${evaluatorGameTab === "offlineGame" ? "is-active" : ""}`}
+                  onClick={() => {
+                    sound.playClick();
+                    setEvaluatorGameTab("offlineGame");
+                  }}
+                >
+                  <FontAwesomeIcon icon={faBullseye} style={{ color: "var(--c-cherry)" }} />
+                  Bullseye Arena
+                  {offlineSubRecord ? (
+                    <span style={{ fontSize: "0.72rem", padding: "0.15rem 0.45rem", borderRadius: "999px", background: "#10b981", color: "#fff", fontWeight: 900 }}>
+                      ✓ 5 Boards
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "0.72rem", padding: "0.15rem 0.45rem", borderRadius: "999px", background: "#f1f5f9", color: "#64748b", fontWeight: 800 }}>
+                      Live Darts
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className={`eval-tab-btn ${evaluatorGameTab === "quickTiles" ? "is-active" : ""}`}
+                  onClick={() => {
+                    sound.playClick();
+                    setEvaluatorGameTab("quickTiles");
+                  }}
+                >
+                  <FontAwesomeIcon icon={faBolt} style={{ color: "var(--c-sun)" }} />
+                  Quick Override Tiles (All 6 Games)
+                </button>
+              </div>
+
+              {/* ========================================================================= */}
+              {/* TAB 1A: NAME THAT TUNE EVALUATION (0, 2.5, 5 per Song & Artist)           */}
+              {/* ========================================================================= */}
+              {evaluatorGameTab === "nameThatTune" && (
+                <div>
+                  {/* Sticky Evaluation Summary Card (Top) */}
+                  <div className="eval-summary-card">
+                    <div>
+                      <span style={{ fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase", color: "#64748b", display: "block" }}>
+                        Name That Tune • Evaluated Score for {selectedScoringTeam}
+                      </span>
+                      <div className="eval-total-display">
+                        <span className="eval-total-num">{tuneTotalScore}</span>
+                        <span className="eval-total-max">/ 100 PTS</span>
+                        <span style={{ marginLeft: "0.8rem", fontSize: "0.85rem", fontWeight: 800, color: "#10b981" }}>
+                          ({tuneItems.length} Tracks • 10 pts max each)
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        className="admin-score-input"
-                        value={overrideData[activeScoringTeamData.name]?.nameThatTune ?? activeScoringTeamData.nameThatTune}
-                        onChange={(e) => handleScoreChange(activeScoringTeamData.name, "nameThatTune", e.target.value)}
-                      />
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexWrap: "wrap" }}>
                       <button
                         type="button"
                         className="btn-action btn-gold"
-                        style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
-                        onClick={() => handleSaveScore(activeScoringTeamData.name, "nameThatTune")}
+                        style={{ padding: "0.5rem 0.9rem", fontSize: "0.82rem" }}
+                        onClick={handleAutoGradeTune}
+                        title="Auto-grade exact matches to 5 pts and partial matches to 2.5 pts"
                       >
-                        Award Score
+                        <FontAwesomeIcon icon={faWandMagicSparkles} style={{ marginRight: "0.4rem" }} />
+                        Auto-Grade Matches
                       </button>
-                    </div>
-                    <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.4rem", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--muted-paper)" }}>Presets:</span>
-                      {[20, 40, 60, 80, 100].map((pts) => (
+
+                      <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={markPlayedOnSave}
+                          onChange={(e) => setMarkPlayedOnSave(e.target.checked)}
+                        />
+                        Lock as Played (1-Play limit)
+                      </label>
+
+                      <button
+                        type="button"
+                        className="btn-action btn-green"
+                        style={{ padding: "0.6rem 1.3rem", fontSize: "0.9rem", fontWeight: 900 }}
+                        onClick={handleSaveTuneEvaluation}
+                        disabled={isSavingEvaluation}
+                      >
+                        <FontAwesomeIcon icon={faFloppyDisk} style={{ marginRight: "0.4rem" }} />
+                        {isSavingEvaluation ? "Saving…" : `SAVE & PUBLISH (${tuneTotalScore} PTS)`}
+                      </button>
+
+                      {isGamePlayed(activeScoringTeamData, "nameThatTune") && (
                         <button
-                          key={pts}
                           type="button"
-                          className="admin-quick-score-btn"
-                          onClick={() => handleQuickAward(activeScoringTeamData.name, "nameThatTune", pts)}
+                          onClick={() => handleToggleUnlock(selectedScoringTeam, "nameThatTune", true, true)}
+                          style={{
+                            padding: "0.55rem 0.95rem",
+                            fontSize: "0.82rem",
+                            borderRadius: "8px",
+                            border: "1.5px solid #dc2626",
+                            background: "#fee2e2",
+                            color: "#991b1b",
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.4rem",
+                          }}
+                          title="Remove this game's play to allow the team to replay it"
                         >
-                          {pts}
+                          <FontAwesomeIcon icon={faTrashCan} />
+                          Remove Play (Allow Replay)
                         </button>
-                      ))}
+                      )}
                     </div>
                   </div>
 
-                  {/* 4. Categories */}
-                  <div className="admin-card-item">
-                    <div className="admin-card-item-header">
-                      <strong>
-                        <FontAwesomeIcon icon={faLayerGroup} style={{ color: "var(--c-grape)", marginRight: "0.4rem" }} />
-                        Categories (Scattergories)
-                      </strong>
-                      <span style={{ fontWeight: 900 }}>{activeScoringTeamData.categories}/100 PTS</span>
-                    </div>
-                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        className="admin-score-input"
-                        value={overrideData[activeScoringTeamData.name]?.categories ?? activeScoringTeamData.categories}
-                        onChange={(e) => handleScoreChange(activeScoringTeamData.name, "categories", e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="btn-action btn-gold"
-                        style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
-                        onClick={() => handleSaveScore(activeScoringTeamData.name, "categories")}
-                      >
-                        Award Score
-                      </button>
-                    </div>
-                    <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.4rem", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--muted-paper)" }}>Presets:</span>
-                      {[25, 50, 75, 90, 100].map((pts) => (
-                        <button
-                          key={pts}
-                          type="button"
-                          className="admin-quick-score-btn"
-                          onClick={() => handleQuickAward(activeScoringTeamData.name, "categories", pts)}
-                        >
-                          {pts}
-                        </button>
-                      ))}
-                    </div>
+                  {/* 10 Side-by-Side Track Evaluation Cards */}
+                  <div className="eval-side-by-side-list">
+                    {tuneItems.map((item, idx) => {
+                      const scores = currentTuneScores[idx] || { song: 0, artist: 0 };
+                      const trackSubtotal = (scores.song || 0) + (scores.artist || 0);
+
+                      return (
+                        <div key={idx} className="eval-card">
+                          {/* Left Column: Official Question & Expected Answer */}
+                          <div className="eval-box-expected">
+                            <div>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    padding: "0.2rem 0.6rem",
+                                    borderRadius: "999px",
+                                    background: "var(--stage)",
+                                    color: "#fff",
+                                    fontFamily: "var(--font-mono)",
+                                    fontSize: "0.75rem",
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  TRACK {idx + 1} OF {tuneItems.length}
+                                </span>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#64748b" }}>
+                                  {item.genre || "Music"} {item.year ? `• ${item.year}` : ""}
+                                </span>
+                              </div>
+
+                              <blockquote
+                                style={{
+                                  margin: "0 0 0.8rem 0",
+                                  padding: "0.65rem 0.85rem",
+                                  background: "#ffffff",
+                                  borderLeft: "4px solid var(--c-sky)",
+                                  borderRadius: "6px",
+                                  fontStyle: "italic",
+                                  fontSize: "0.92rem",
+                                  color: "var(--ink)",
+                                  lineHeight: 1.4,
+                                }}
+                              >
+                                “{item.lyric}”
+                              </blockquote>
+                            </div>
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", background: "#ffffff", padding: "0.7rem", borderRadius: "10px", border: "1.5px solid #e2e8f0" }}>
+                              <div>
+                                <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>
+                                  Official Song Title:
+                                </span>
+                                <strong style={{ display: "block", color: "var(--ink)", fontSize: "0.98rem" }}>
+                                  <FontAwesomeIcon icon={faMusic} style={{ color: "var(--c-sky)", marginRight: "0.4rem" }} />
+                                  {item.expectedSong}
+                                </strong>
+                              </div>
+
+                              <div>
+                                <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>
+                                  Official Artist / Singer:
+                                </span>
+                                <strong style={{ display: "block", color: "var(--ink)", fontSize: "0.98rem" }}>
+                                  <FontAwesomeIcon icon={faCrown} style={{ color: "var(--c-sun)", marginRight: "0.4rem" }} />
+                                  {item.expectedArtist}
+                                </strong>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right Column: Participant's Guess & 0, 2.5, 5 Scoring Controls */}
+                          <div className="eval-box-submission">
+                            <div>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 900, color: "var(--gold-dark)", textTransform: "uppercase" }}>
+                                  Team Submission & Evaluation
+                                </span>
+                                <span
+                                  style={{
+                                    fontFamily: "var(--font-mono)",
+                                    fontWeight: 900,
+                                    fontSize: "0.85rem",
+                                    padding: "0.2rem 0.6rem",
+                                    borderRadius: "8px",
+                                    background: trackSubtotal === 10 ? "#d1fae5" : trackSubtotal > 0 ? "#fef3c7" : "#fee2e2",
+                                    color: trackSubtotal === 10 ? "#065f46" : trackSubtotal > 0 ? "#92400e" : "#991b1b",
+                                    border: "1.5px solid currentColor",
+                                  }}
+                                >
+                                  Track Subtotal: {trackSubtotal} / 10 PTS
+                                </span>
+                              </div>
+
+                              {/* Part 1: Song Title Scoring (0, 2.5, 5) */}
+                              <div className="eval-part-row">
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.4rem" }}>
+                                  <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#475569" }}>
+                                    PART A: SONG TITLE GUESS
+                                  </span>
+                                  <strong style={{ fontSize: "0.82rem", fontFamily: "var(--font-mono)", color: scores.song === 5 ? "#10b981" : scores.song === 2.5 ? "#f59e0b" : "#64748b" }}>
+                                    Score: {scores.song} / 5 pts
+                                  </strong>
+                                </div>
+
+                                <div
+                                  style={{
+                                    padding: "0.45rem 0.75rem",
+                                    background: "#ffffff",
+                                    borderRadius: "8px",
+                                    border: "1.5px solid #cbd5e1",
+                                    fontSize: "0.92rem",
+                                    fontWeight: 700,
+                                    color: item.enteredSong ? "var(--ink)" : "#94a3b8",
+                                    fontStyle: item.enteredSong ? "normal" : "italic",
+                                  }}
+                                >
+                                  {item.enteredSong ? `“${item.enteredSong}”` : "(No song title entered)"}
+                                </div>
+
+                                <div className="eval-pill-group">
+                                  <button
+                                    type="button"
+                                    className={`eval-score-btn ${scores.song === 0 ? "is-selected-zero" : ""}`}
+                                    onClick={() => handleTuneScoreChange(idx, "song", 0)}
+                                  >
+                                    0 PTS (Incorrect)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`eval-score-btn ${scores.song === 2.5 ? "is-selected-half" : ""}`}
+                                    onClick={() => handleTuneScoreChange(idx, "song", 2.5)}
+                                  >
+                                    2.5 PTS (Half / Close)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`eval-score-btn ${scores.song === 5 ? "is-selected" : ""}`}
+                                    onClick={() => handleTuneScoreChange(idx, "song", 5)}
+                                  >
+                                    <FontAwesomeIcon icon={faCheck} style={{ marginRight: "0.3rem" }} />
+                                    5 PTS (Correct)
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Part 2: Artist Scoring (0, 2.5, 5) */}
+                              <div className="eval-part-row" style={{ marginTop: "0.5rem" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.4rem" }}>
+                                  <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#475569" }}>
+                                    PART B: ARTIST / SINGER GUESS
+                                  </span>
+                                  <strong style={{ fontSize: "0.82rem", fontFamily: "var(--font-mono)", color: scores.artist === 5 ? "#10b981" : scores.artist === 2.5 ? "#f59e0b" : "#64748b" }}>
+                                    Score: {scores.artist} / 5 pts
+                                  </strong>
+                                </div>
+
+                                <div
+                                  style={{
+                                    padding: "0.45rem 0.75rem",
+                                    background: "#ffffff",
+                                    borderRadius: "8px",
+                                    border: "1.5px solid #cbd5e1",
+                                    fontSize: "0.92rem",
+                                    fontWeight: 700,
+                                    color: item.enteredArtist ? "var(--ink)" : "#94a3b8",
+                                    fontStyle: item.enteredArtist ? "normal" : "italic",
+                                  }}
+                                >
+                                  {item.enteredArtist ? `“${item.enteredArtist}”` : "(No artist entered)"}
+                                </div>
+
+                                <div className="eval-pill-group">
+                                  <button
+                                    type="button"
+                                    className={`eval-score-btn ${scores.artist === 0 ? "is-selected-zero" : ""}`}
+                                    onClick={() => handleTuneScoreChange(idx, "artist", 0)}
+                                  >
+                                    0 PTS (Incorrect)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`eval-score-btn ${scores.artist === 2.5 ? "is-selected-half" : ""}`}
+                                    onClick={() => handleTuneScoreChange(idx, "artist", 2.5)}
+                                  >
+                                    2.5 PTS (Half / Close)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`eval-score-btn ${scores.artist === 5 ? "is-selected" : ""}`}
+                                    onClick={() => handleTuneScoreChange(idx, "artist", 5)}
+                                  >
+                                    <FontAwesomeIcon icon={faCheck} style={{ marginRight: "0.3rem" }} />
+                                    5 PTS (Correct)
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {/* 5. Reverse Millionaire */}
-                  <div className="admin-card-item">
-                    <div className="admin-card-item-header">
-                      <strong>
-                        <FontAwesomeIcon icon={faCoins} style={{ color: "var(--c-coin)", marginRight: "0.4rem" }} />
-                        Reverse Millionaire
-                      </strong>
-                      <span style={{ fontWeight: 900 }}>{activeScoringTeamData.reverseMillionaire}/100 PTS</span>
+                  {/* Bottom Save Bar for convenient submission */}
+                  <div className="eval-summary-card" style={{ marginTop: "1rem" }}>
+                    <div>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#64748b" }}>
+                        All 10 Tracks Evaluated for {selectedScoringTeam}
+                      </span>
+                      <div className="eval-total-display">
+                        <span className="eval-total-num">{tuneTotalScore}</span>
+                        <span className="eval-total-max">/ 100 PTS</span>
+                      </div>
                     </div>
-                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        className="admin-score-input"
-                        value={overrideData[activeScoringTeamData.name]?.reverseMillionaire ?? activeScoringTeamData.reverseMillionaire}
-                        onChange={(e) => handleScoreChange(activeScoringTeamData.name, "reverseMillionaire", e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="btn-action btn-gold"
-                        style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
-                        onClick={() => handleSaveScore(activeScoringTeamData.name, "reverseMillionaire")}
-                      >
-                        Award Score
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* 6. Bullseye Arena */}
-                  <div className="admin-card-item">
-                    <div className="admin-card-item-header">
-                      <strong>
-                        <FontAwesomeIcon icon={faBullseye} style={{ color: "var(--c-cherry)", marginRight: "0.4rem" }} />
-                        Bullseye: Darts & Archery
-                      </strong>
-                      <span style={{ fontWeight: 900 }}>{activeScoringTeamData.offlineGame}/100 PTS</span>
-                    </div>
-                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        className="admin-score-input"
-                        value={overrideData[activeScoringTeamData.name]?.offlineGame ?? activeScoringTeamData.offlineGame}
-                        onChange={(e) => handleScoreChange(activeScoringTeamData.name, "offlineGame", e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="btn-action btn-gold"
-                        style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
-                        onClick={() => handleSaveScore(activeScoringTeamData.name, "offlineGame")}
-                      >
-                        Award Score
-                      </button>
-                    </div>
-                    <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.4rem", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--muted-paper)" }}>Boards:</span>
-                      {[20, 40, 60, 80, 100].map((pts) => (
-                        <button
-                          key={pts}
-                          type="button"
-                          className="admin-quick-score-btn"
-                          onClick={() => handleQuickAward(activeScoringTeamData.name, "offlineGame", pts)}
-                        >
-                          {pts}
-                        </button>
-                      ))}
-                    </div>
+                    <button
+                      type="button"
+                      className="btn-action btn-green"
+                      style={{ padding: "0.7rem 1.6rem", fontSize: "0.95rem", fontWeight: 900 }}
+                      onClick={handleSaveTuneEvaluation}
+                      disabled={isSavingEvaluation}
+                    >
+                      <FontAwesomeIcon icon={faFloppyDisk} style={{ marginRight: "0.5rem" }} />
+                      {isSavingEvaluation ? "Saving…" : `SAVE & PUBLISH TUNE SCORE (${tuneTotalScore} PTS)`}
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <p>No team selected.</p>
+              )}
+
+              {/* ========================================================================= */}
+              {/* TAB 1B: CATEGORIES EVALUATION (0, 5, 10 for each 10-point question)       */}
+              {/* ========================================================================= */}
+              {evaluatorGameTab === "categories" && (
+                <div>
+                  {/* Sticky Evaluation Summary Card (Top) */}
+                  <div className="eval-summary-card">
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.2rem" }}>
+                        <span
+                          style={{
+                            padding: "0.2rem 0.6rem",
+                            borderRadius: "8px",
+                            background: "var(--c-sun)",
+                            color: "var(--ink)",
+                            fontFamily: "var(--font-mono)",
+                            fontWeight: 900,
+                            fontSize: "0.82rem",
+                            border: "1.5px solid var(--ink)",
+                          }}
+                        >
+                          LETTER ‘{activeLetter}’
+                        </span>
+                        <span style={{ fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase", color: "#64748b" }}>
+                          Categories Evaluation • {selectedScoringTeam}
+                        </span>
+                      </div>
+                      <div className="eval-total-display">
+                        <span className="eval-total-num">{catTotalScore}</span>
+                        <span className="eval-total-max">/ 100 PTS</span>
+                        <span style={{ marginLeft: "0.8rem", fontSize: "0.85rem", fontWeight: 800, color: "#10b981" }}>
+                          ({catItems.length} Cards • 10 pts each)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="btn-action btn-gold"
+                        style={{ padding: "0.5rem 0.9rem", fontSize: "0.82rem" }}
+                        onClick={handleAutoGradeCategories}
+                        title={`Auto-grade valid answers starting with letter '${activeLetter}' to 10 pts`}
+                      >
+                        <FontAwesomeIcon icon={faWandMagicSparkles} style={{ marginRight: "0.4rem" }} />
+                        Auto-Grade ‘{activeLetter}’
+                      </button>
+
+                      <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={markPlayedOnSave}
+                          onChange={(e) => setMarkPlayedOnSave(e.target.checked)}
+                        />
+                        Lock as Played (1-Play limit)
+                      </label>
+
+                      <button
+                        type="button"
+                        className="btn-action btn-green"
+                        style={{ padding: "0.6rem 1.3rem", fontSize: "0.9rem", fontWeight: 900 }}
+                        onClick={handleSaveCatEvaluation}
+                        disabled={isSavingEvaluation}
+                      >
+                        <FontAwesomeIcon icon={faFloppyDisk} style={{ marginRight: "0.4rem" }} />
+                        {isSavingEvaluation ? "Saving…" : `SAVE & PUBLISH (${catTotalScore} PTS)`}
+                      </button>
+
+                      {isGamePlayed(activeScoringTeamData, "categories") && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleUnlock(selectedScoringTeam, "categories", true, true)}
+                          style={{
+                            padding: "0.55rem 0.95rem",
+                            fontSize: "0.82rem",
+                            borderRadius: "8px",
+                            border: "1.5px solid #dc2626",
+                            background: "#fee2e2",
+                            color: "#991b1b",
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.4rem",
+                          }}
+                          title="Remove this game's play to allow the team to replay it"
+                        >
+                          <FontAwesomeIcon icon={faTrashCan} />
+                          Remove Play (Allow Replay)
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 10 Side-by-Side Category Card Evaluation */}
+                  <div className="eval-side-by-side-list">
+                    {catItems.map((item, idx) => {
+                      const scoreVal = currentCatScores[idx] ?? 0;
+                      const ans = (item.enteredAnswer || "").trim();
+                      const letterForCheck = item.letter || activeLetter;
+                      const validation = validateCategoryAnswer(ans, letterForCheck);
+
+                      return (
+                        <div key={idx} className="eval-card">
+                          {/* Left Column: Official Category Prompt & Card Details */}
+                          <div className="eval-box-expected">
+                            <div>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    padding: "0.2rem 0.6rem",
+                                    borderRadius: "999px",
+                                    background: "var(--stage)",
+                                    color: "#fff",
+                                    fontFamily: "var(--font-mono)",
+                                    fontSize: "0.75rem",
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  CARD {idx + 1} OF {catItems.length}
+                                </span>
+                                {item.cardRank && (
+                                  <span
+                                    style={{
+                                      fontFamily: "var(--font-mono)",
+                                      fontWeight: 900,
+                                      fontSize: "0.95rem",
+                                      color: item.cardSuit === "hearts" || item.cardSuit === "diamonds" ? "#dc2626" : "var(--ink)",
+                                    }}
+                                  >
+                                    {item.cardRank}
+                                    {item.cardSuit === "hearts" ? "♥" : item.cardSuit === "diamonds" ? "♦" : item.cardSuit === "clubs" ? "♣" : "♠"}
+                                  </span>
+                                )}
+                              </div>
+
+                              <h4 style={{ margin: "0.3rem 0", fontSize: "1.1rem", fontWeight: 900, color: "var(--ink)" }}>
+                                {item.cardName}
+                              </h4>
+                              {item.hint && (
+                                <p style={{ margin: "0 0 0.5rem 0", fontSize: "0.85rem", color: "#64748b", fontStyle: "italic" }}>
+                                  Hint: {item.hint}
+                                </p>
+                              )}
+                            </div>
+
+                            <div style={{ background: "#ffffff", padding: "0.6rem 0.8rem", borderRadius: "10px", border: "1.5px solid #cbd5e1" }}>
+                              <span style={{ fontSize: "0.74rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>
+                                Constraint Rule:
+                              </span>
+                              <strong style={{ display: "block", color: "var(--gold-dark)", fontFamily: "var(--font-mono)", fontSize: "0.92rem" }}>
+                                Must start with letter “{letterForCheck}”
+                              </strong>
+                            </div>
+                          </div>
+
+                          {/* Right Column: Participant's Answer & 0, 5, 10 Scoring */}
+                          <div className="eval-box-submission">
+                            <div>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 900, color: "var(--gold-dark)", textTransform: "uppercase" }}>
+                                  Participant Submission
+                                </span>
+                                <span
+                                  style={{
+                                    fontFamily: "var(--font-mono)",
+                                    fontWeight: 900,
+                                    fontSize: "0.85rem",
+                                    padding: "0.2rem 0.6rem",
+                                    borderRadius: "8px",
+                                    background: scoreVal === 10 ? "#d1fae5" : scoreVal === 5 ? "#fef3c7" : "#fee2e2",
+                                    color: scoreVal === 10 ? "#065f46" : scoreVal === 5 ? "#92400e" : "#991b1b",
+                                    border: "1.5px solid currentColor",
+                                  }}
+                                >
+                                  Awarded: {scoreVal} / 10 PTS
+                                </span>
+                              </div>
+
+                              <div style={{ marginBottom: "0.8rem" }}>
+                                <div
+                                  style={{
+                                    padding: "0.6rem 0.85rem",
+                                    background: "#ffffff",
+                                    borderRadius: "10px",
+                                    border: "2px solid #cbd5e1",
+                                    fontSize: "1.05rem",
+                                    fontWeight: 800,
+                                    color: ans ? "var(--ink)" : "#94a3b8",
+                                    fontStyle: ans ? "normal" : "italic",
+                                    marginBottom: "0.4rem",
+                                  }}
+                                >
+                                  {ans ? ans : "(No answer entered)"}
+                                </div>
+
+                                {ans ? (
+                                  <span
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "0.3rem",
+                                      fontSize: "0.78rem",
+                                      fontWeight: 800,
+                                      padding: "0.2rem 0.55rem",
+                                      borderRadius: "6px",
+                                      background: validation.valid ? "#d1fae5" : "#fee2e2",
+                                      color: validation.valid ? "#065f46" : "#991b1b",
+                                    }}
+                                  >
+                                    {validation.valid ? `✓ Starts with '${letterForCheck}'` : `✕ ${validation.reason}`}
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: "0.78rem", color: "#94a3b8", fontWeight: 700 }}>
+                                    Blank entry
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* 0, 5, 10 Scoring Buttons for 10-point question */}
+                              <div style={{ marginTop: "0.6rem" }}>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#64748b", display: "block", marginBottom: "0.3rem" }}>
+                                  AWARD POINTS (10 PTS MAX):
+                                </span>
+                                <div className="eval-pill-group">
+                                  <button
+                                    type="button"
+                                    className={`eval-score-btn ${scoreVal === 0 ? "is-selected-zero" : ""}`}
+                                    onClick={() => handleCatScoreChange(idx, 0)}
+                                  >
+                                    0 PTS (Invalid / Blank)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`eval-score-btn ${scoreVal === 5 ? "is-selected-half" : ""}`}
+                                    onClick={() => handleCatScoreChange(idx, 5)}
+                                  >
+                                    5 PTS (Duplicate / Borderline)
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`eval-score-btn ${scoreVal === 10 ? "is-selected" : ""}`}
+                                    onClick={() => handleCatScoreChange(idx, 10)}
+                                  >
+                                    <FontAwesomeIcon icon={faCheck} style={{ marginRight: "0.3rem" }} />
+                                    10 PTS (Unique Valid)
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Bottom Save Bar for convenient submission */}
+                  <div className="eval-summary-card" style={{ marginTop: "1rem" }}>
+                    <div>
+                      <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#64748b" }}>
+                        All 10 Category Cards Evaluated for {selectedScoringTeam}
+                      </span>
+                      <div className="eval-total-display">
+                        <span className="eval-total-num">{catTotalScore}</span>
+                        <span className="eval-total-max">/ 100 PTS</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-action btn-green"
+                      style={{ padding: "0.7rem 1.6rem", fontSize: "0.95rem", fontWeight: 900 }}
+                      onClick={handleSaveCatEvaluation}
+                      disabled={isSavingEvaluation}
+                    >
+                      <FontAwesomeIcon icon={faFloppyDisk} style={{ marginRight: "0.5rem" }} />
+                      {isSavingEvaluation ? "Saving…" : `SAVE & PUBLISH CATEGORIES SCORE (${catTotalScore} PTS)`}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ========================================================================= */}
+              {/* TAB 1C: BULLSEYE ARENA EVALUATION                                         */}
+              {/* ========================================================================= */}
+              {evaluatorGameTab === "offlineGame" && (
+                <div>
+                  <div className="eval-summary-card">
+                    <div>
+                      <span style={{ fontSize: "0.78rem", fontWeight: 800, textTransform: "uppercase", color: "#64748b", display: "block" }}>
+                        Bullseye Arena Evaluation • {selectedScoringTeam}
+                      </span>
+                      <div className="eval-total-display">
+                        <span className="eval-total-num">{offlineTotalScore}</span>
+                        <span className="eval-total-max">/ 100 PTS</span>
+                        <span style={{ marginLeft: "0.8rem", fontSize: "0.85rem", fontWeight: 800, color: "#10b981" }}>
+                          {isSpinnerSubmission ? "(3 Answers • Evaluated against 5 Spun Criteria)" : `(${offlineItems.length} Target Boards • 20 pts max each)`}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexWrap: "wrap" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={markPlayedOnSave}
+                          onChange={(e) => setMarkPlayedOnSave(e.target.checked)}
+                        />
+                        Lock as Played (1-Play limit)
+                      </label>
+
+                      <button
+                        type="button"
+                        className="btn-action btn-green"
+                        style={{ padding: "0.6rem 1.3rem", fontSize: "0.9rem", fontWeight: 900 }}
+                        onClick={handleSaveOfflineEvaluation}
+                        disabled={isSavingEvaluation}
+                      >
+                        <FontAwesomeIcon icon={faFloppyDisk} style={{ marginRight: "0.4rem" }} />
+                        {isSavingEvaluation ? "Saving…" : `SAVE & PUBLISH (${offlineTotalScore} PTS)`}
+                      </button>
+
+                      {isGamePlayed(activeScoringTeamData, "offlineGame") && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleUnlock(selectedScoringTeam, "offlineGame", true, true)}
+                          style={{
+                            padding: "0.55rem 0.95rem",
+                            fontSize: "0.82rem",
+                            borderRadius: "8px",
+                            border: "1.5px solid #dc2626",
+                            background: "#fee2e2",
+                            color: "#991b1b",
+                            fontWeight: 800,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "0.4rem",
+                          }}
+                          title="Remove this game's play to allow the team to replay it"
+                        >
+                          <FontAwesomeIcon icon={faTrashCan} />
+                          Remove Play (Allow Replay)
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 5-SPINNER SUBMISSION EVALUATOR */}
+                  {isSpinnerSubmission ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem", marginTop: "1rem" }}>
+                      {/* Spun Criteria Banner */}
+                      <div
+                        style={{
+                          background: "#ffffff",
+                          border: "2.5px solid var(--ink)",
+                          borderRadius: "14px",
+                          padding: "1rem 1.4rem",
+                          boxShadow: "3px 3px 0 var(--gold-primary)",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.78rem",
+                            fontWeight: 900,
+                            letterSpacing: "1px",
+                            textTransform: "uppercase",
+                            color: "var(--gold-dark)",
+                            display: "block",
+                            marginBottom: "0.5rem",
+                          }}
+                        >
+                          TEAM'S 5 LANDED CRITERIA:
+                        </span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                          {(offlineItems[0]?.criteria || []).map((crit, cIdx) => (
+                            <span
+                              key={cIdx}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "0.4rem",
+                                padding: "0.35rem 0.8rem",
+                                background: "var(--stage-3)",
+                                color: "#ffffff",
+                                border: "1.5px solid var(--gold-border)",
+                                borderRadius: "9999px",
+                                fontSize: "0.85rem",
+                                fontWeight: 800,
+                              }}
+                            >
+                              <strong style={{ color: "var(--gold-bright)", textTransform: "uppercase", fontSize: "0.75rem" }}>
+                                {crit.shortLabel}:
+                              </strong>
+                              <span>{crit.selectedOption}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 3 Answers Evaluation Cards */}
+                      <div className="eval-side-by-side-list">
+                        {[0, 1, 2].map((ansIdx) => {
+                          const ansNum = ansIdx + 1;
+                          const answersList = offlineItems[0]?.answers || offlineItems[0]?.guesses || [];
+                          const answerText = answersList[ansIdx] || "";
+                          const noteText = offlineItems[0]?.answerNotes?.[ansIdx] || "";
+                          const scoreVal = currentOfflineScores[ansIdx] ?? 0;
+
+                          return (
+                            <div key={ansIdx} className="eval-card">
+                              <div className="eval-box-expected">
+                                <div>
+                                  <span
+                                    style={{
+                                      display: "inline-block",
+                                      padding: "0.2rem 0.6rem",
+                                      borderRadius: "999px",
+                                      background: "var(--stage)",
+                                      color: "#fff",
+                                      fontFamily: "var(--font-mono)",
+                                      fontSize: "0.75rem",
+                                      fontWeight: 900,
+                                      marginBottom: "0.4rem",
+                                    }}
+                                  >
+                                    ANSWER #{ansNum} OF 3
+                                  </span>
+
+                                  <h4 style={{ margin: "0.3rem 0", fontSize: "1.2rem", fontWeight: 900, color: "var(--ink)" }}>
+                                    {answerText ? `"${answerText}"` : <span style={{ color: "#94a3b8", fontStyle: "italic" }}>(Blank Answer #{ansNum})</span>}
+                                  </h4>
+
+                                  {noteText && (
+                                    <p style={{ margin: "0.4rem 0 0", fontSize: "0.85rem", color: "#475569", background: "#f8fafc", padding: "0.4rem 0.65rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                                      <strong>Note:</strong> {noteText}
+                                    </p>
+                                  )}
+
+                                  <div style={{ marginTop: "0.8rem" }}>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>
+                                      Check against 5 criteria:
+                                    </span>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem", marginTop: "0.3rem" }}>
+                                      {(offlineItems[0]?.criteria || []).map((crit, cIdx) => (
+                                        <span
+                                          key={cIdx}
+                                          style={{
+                                            fontSize: "0.72rem",
+                                            padding: "0.2rem 0.5rem",
+                                            borderRadius: "6px",
+                                            background: "#f1f5f9",
+                                            border: "1px solid #cbd5e1",
+                                            fontWeight: 700,
+                                            color: "#334155",
+                                          }}
+                                        >
+                                          {crit.shortLabel}: {crit.selectedOption}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="eval-box-submission">
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" }}>
+                                  <span style={{ fontSize: "0.75rem", fontWeight: 900, color: "var(--gold-dark)", textTransform: "uppercase" }}>
+                                    Score for Answer #{ansNum}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontFamily: "var(--font-mono)",
+                                      fontWeight: 900,
+                                      fontSize: "0.92rem",
+                                      padding: "0.25rem 0.75rem",
+                                      borderRadius: "8px",
+                                      background: scoreVal > 0 ? "#d1fae5" : "#fee2e2",
+                                      color: scoreVal > 0 ? "#065f46" : "#991b1b",
+                                      border: "1.5px solid currentColor",
+                                    }}
+                                  >
+                                    {scoreVal} PTS
+                                  </span>
+                                </div>
+
+                                <div>
+                                  <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#64748b", display: "block", marginBottom: "0.35rem" }}>
+                                    AWARD ANSWER POINTS:
+                                  </span>
+                                  <div className="eval-pill-group" style={{ flexWrap: "wrap" }}>
+                                    {[0, 5, 10, 15, 20, 25, 30, 33.3].map((pts) => (
+                                      <button
+                                        key={pts}
+                                        type="button"
+                                        className={`eval-score-btn ${scoreVal === pts ? (pts > 0 ? "is-selected" : "is-selected-zero") : ""}`}
+                                        onClick={() => handleOfflineScoreChange(ansIdx, pts)}
+                                      >
+                                        {pts} PTS
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  <div style={{ marginTop: "0.6rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                    <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#64748b" }}>Custom:</span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={100}
+                                      step={0.5}
+                                      value={scoreVal}
+                                      onChange={(e) => handleOfflineScoreChange(ansIdx, parseFloat(e.target.value) || 0)}
+                                      style={{
+                                        width: "80px",
+                                        padding: "0.3rem 0.5rem",
+                                        fontWeight: 900,
+                                        fontSize: "0.95rem",
+                                        border: "2px solid var(--ink)",
+                                        borderRadius: "6px",
+                                        textAlign: "center",
+                                      }}
+                                    />
+                                    <span style={{ fontSize: "0.78rem", color: "#64748b" }}>PTS</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Legacy 5 Target Boards Evaluator */
+                    <div className="eval-side-by-side-list">
+                      {offlineItems.map((item, idx) => {
+                        const scoreVal = currentOfflineScores[idx] ?? 0;
+                        return (
+                          <div key={idx} className="eval-card">
+                            <div className="eval-box-expected">
+                              <div>
+                                <span
+                                  style={{
+                                    display: "inline-block",
+                                    padding: "0.2rem 0.6rem",
+                                    borderRadius: "999px",
+                                    background: "var(--stage)",
+                                    color: "#fff",
+                                    fontFamily: "var(--font-mono)",
+                                    fontSize: "0.75rem",
+                                    fontWeight: 900,
+                                    marginBottom: "0.4rem",
+                                  }}
+                                >
+                                  TARGET BOARD {idx + 1} OF {offlineItems.length}
+                                </span>
+                                <h4 style={{ margin: "0.3rem 0", fontSize: "1.1rem", fontWeight: 900, color: "var(--ink)" }}>
+                                  <FontAwesomeIcon icon={faBullseye} style={{ color: "var(--c-cherry)", marginRight: "0.4rem" }} />
+                                  {item.categoryName}
+                                </h4>
+                                {item.hint && (
+                                  <p style={{ margin: "0", fontSize: "0.85rem", color: "#64748b" }}>
+                                    Target: {item.hint}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="eval-box-submission">
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 900, color: "var(--gold-dark)", textTransform: "uppercase" }}>
+                                  Recorded Guesses & Score
+                                </span>
+                                <span
+                                  style={{
+                                    fontFamily: "var(--font-mono)",
+                                    fontWeight: 900,
+                                    fontSize: "0.85rem",
+                                    padding: "0.2rem 0.6rem",
+                                    borderRadius: "8px",
+                                    background: scoreVal > 0 ? "#d1fae5" : "#fee2e2",
+                                    color: scoreVal > 0 ? "#065f46" : "#991b1b",
+                                    border: "1.5px solid currentColor",
+                                  }}
+                                >
+                                  Board Score: {scoreVal} / 20 PTS
+                                </span>
+                              </div>
+
+                              {item.guesses && item.guesses.some((g) => g) ? (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginBottom: "0.7rem" }}>
+                                  {item.guesses.map((g, gIdx) => (
+                                    <div key={gIdx} style={{ fontSize: "0.88rem", fontWeight: 700, padding: "0.3rem 0.6rem", background: "#ffffff", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
+                                      Guess #{gIdx + 1}: {g || "(blank)"}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p style={{ fontSize: "0.85rem", color: "#64748b", fontStyle: "italic", margin: "0 0 0.7rem 0" }}>
+                                  Live Stage Dart Throw (No digital text guesses)
+                                </p>
+                              )}
+
+                              <div>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "#64748b", display: "block", marginBottom: "0.3rem" }}>
+                                  AWARD BOARD POINTS (20 PTS MAX):
+                                </span>
+                                <div className="eval-pill-group">
+                                  {[0, 5, 10, 15, 20].map((pts) => (
+                                    <button
+                                      key={pts}
+                                      type="button"
+                                      className={`eval-score-btn ${scoreVal === pts ? (pts > 0 ? "is-selected" : "is-selected-zero") : ""}`}
+                                      onClick={() => handleOfflineScoreChange(idx, pts)}
+                                    >
+                                      {pts} PTS
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ========================================================================= */}
+              {/* TAB 1D: QUICK OVERRIDE TILES (ALL 6 GAMES)                                */}
+              {/* ========================================================================= */}
+              {evaluatorGameTab === "quickTiles" && (
+                <div>
+                  <p style={{ fontSize: "0.88rem", color: "#64748b", marginBottom: "1rem" }}>
+                    Direct numerical scoring tiles for all 6 challenges. Enter any custom score (0–100) or tap quick presets.
+                  </p>
+                  {activeScoringTeamData ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem" }}>
+                      {/* 1. Greener Grass */}
+                      <div className="admin-card-item">
+                        <div className="admin-card-item-header">
+                          <strong>
+                            <FontAwesomeIcon icon={faLeaf} style={{ color: "var(--c-grass)", marginRight: "0.4rem" }} />
+                            Greener Grass
+                          </strong>
+                          <span style={{ fontWeight: 900 }}>{activeScoringTeamData.greenerGrass}/100 PTS</span>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="admin-score-input"
+                            value={overrideData[activeScoringTeamData.name]?.greenerGrass ?? activeScoringTeamData.greenerGrass}
+                            onChange={(e) => handleScoreChange(activeScoringTeamData.name, "greenerGrass", e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="btn-action btn-gold"
+                            style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
+                            onClick={() => handleSaveScore(activeScoringTeamData.name, "greenerGrass")}
+                          >
+                            Award Score
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 2. Real Headline */}
+                      <div className="admin-card-item">
+                        <div className="admin-card-item-header">
+                          <strong>
+                            <FontAwesomeIcon icon={faNewspaper} style={{ color: "var(--c-sun)", marginRight: "0.4rem" }} />
+                            Real Headline or Not
+                          </strong>
+                          <span style={{ fontWeight: 900 }}>{activeScoringTeamData.realHeadline}/100 PTS</span>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="admin-score-input"
+                            value={overrideData[activeScoringTeamData.name]?.realHeadline ?? activeScoringTeamData.realHeadline}
+                            onChange={(e) => handleScoreChange(activeScoringTeamData.name, "realHeadline", e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="btn-action btn-gold"
+                            style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
+                            onClick={() => handleSaveScore(activeScoringTeamData.name, "realHeadline")}
+                          >
+                            Award Score
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 3. Name That Tune */}
+                      <div className="admin-card-item">
+                        <div className="admin-card-item-header">
+                          <strong>
+                            <FontAwesomeIcon icon={faMusic} style={{ color: "var(--c-sky)", marginRight: "0.4rem" }} />
+                            Name That Tune
+                          </strong>
+                          <span style={{ fontWeight: 900 }}>{activeScoringTeamData.nameThatTune}/100 PTS</span>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="admin-score-input"
+                            value={overrideData[activeScoringTeamData.name]?.nameThatTune ?? activeScoringTeamData.nameThatTune}
+                            onChange={(e) => handleScoreChange(activeScoringTeamData.name, "nameThatTune", e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="btn-action btn-gold"
+                            style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
+                            onClick={() => handleSaveScore(activeScoringTeamData.name, "nameThatTune")}
+                          >
+                            Award Score
+                          </button>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.4rem", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--muted-paper)" }}>Presets:</span>
+                          {[20, 40, 60, 80, 100].map((pts) => (
+                            <button
+                              key={pts}
+                              type="button"
+                              className="admin-quick-score-btn"
+                              onClick={() => handleQuickAward(activeScoringTeamData.name, "nameThatTune", pts)}
+                            >
+                              {pts}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 4. Categories */}
+                      <div className="admin-card-item">
+                        <div className="admin-card-item-header">
+                          <strong>
+                            <FontAwesomeIcon icon={faLayerGroup} style={{ color: "var(--c-grape)", marginRight: "0.4rem" }} />
+                            Categories (Scattergories)
+                          </strong>
+                          <span style={{ fontWeight: 900 }}>{activeScoringTeamData.categories}/100 PTS</span>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="admin-score-input"
+                            value={overrideData[activeScoringTeamData.name]?.categories ?? activeScoringTeamData.categories}
+                            onChange={(e) => handleScoreChange(activeScoringTeamData.name, "categories", e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="btn-action btn-gold"
+                            style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
+                            onClick={() => handleSaveScore(activeScoringTeamData.name, "categories")}
+                          >
+                            Award Score
+                          </button>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.4rem", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--muted-paper)" }}>Presets:</span>
+                          {[25, 50, 75, 90, 100].map((pts) => (
+                            <button
+                              key={pts}
+                              type="button"
+                              className="admin-quick-score-btn"
+                              onClick={() => handleQuickAward(activeScoringTeamData.name, "categories", pts)}
+                            >
+                              {pts}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 5. Reverse Millionaire */}
+                      <div className="admin-card-item">
+                        <div className="admin-card-item-header">
+                          <strong>
+                            <FontAwesomeIcon icon={faCoins} style={{ color: "var(--c-coin)", marginRight: "0.4rem" }} />
+                            Reverse Millionaire
+                          </strong>
+                          <span style={{ fontWeight: 900 }}>{activeScoringTeamData.reverseMillionaire}/100 PTS</span>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="admin-score-input"
+                            value={overrideData[activeScoringTeamData.name]?.reverseMillionaire ?? activeScoringTeamData.reverseMillionaire}
+                            onChange={(e) => handleScoreChange(activeScoringTeamData.name, "reverseMillionaire", e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="btn-action btn-gold"
+                            style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
+                            onClick={() => handleSaveScore(activeScoringTeamData.name, "reverseMillionaire")}
+                          >
+                            Award Score
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* 6. Bullseye Arena */}
+                      <div className="admin-card-item">
+                        <div className="admin-card-item-header">
+                          <strong>
+                            <FontAwesomeIcon icon={faBullseye} style={{ color: "var(--c-cherry)", marginRight: "0.4rem" }} />
+                            Bullseye: Darts & Archery
+                          </strong>
+                          <span style={{ fontWeight: 900 }}>{activeScoringTeamData.offlineGame}/100 PTS</span>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="admin-score-input"
+                            value={overrideData[activeScoringTeamData.name]?.offlineGame ?? activeScoringTeamData.offlineGame}
+                            onChange={(e) => handleScoreChange(activeScoringTeamData.name, "offlineGame", e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="btn-action btn-gold"
+                            style={{ padding: "0.4rem 0.8rem", fontSize: "0.82rem" }}
+                            onClick={() => handleSaveScore(activeScoringTeamData.name, "offlineGame")}
+                          >
+                            Award Score
+                          </button>
+                        </div>
+                        <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.4rem", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--muted-paper)" }}>Boards:</span>
+                          {[20, 40, 60, 80, 100].map((pts) => (
+                            <button
+                              key={pts}
+                              type="button"
+                              className="admin-quick-score-btn"
+                              onClick={() => handleQuickAward(activeScoringTeamData.name, "offlineGame", pts)}
+                            >
+                              {pts}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p>No team selected.</p>
+                  )}
+                </div>
               )}
             </div>
 
@@ -1058,64 +2438,178 @@ export default function AdminPanel({
                             </div>
                           </td>
                           <td>
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              className="admin-score-input"
-                              value={grassVal}
-                              onChange={(e) => handleScoreChange(t.name, "greenerGrass", e.target.value)}
-                            />
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                className="admin-score-input"
+                                value={grassVal}
+                                onChange={(e) => handleScoreChange(t.name, "greenerGrass", e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleToggleUnlock(t.name, "greenerGrass", isGamePlayed(t, "greenerGrass"))}
+                                style={{
+                                  fontSize: "0.65rem",
+                                  fontWeight: 800,
+                                  padding: "0.15rem 0.35rem",
+                                  borderRadius: "4px",
+                                  border: isGamePlayed(t, "greenerGrass") ? "1px solid #16a34a" : "1px dashed #94a3b8",
+                                  background: isGamePlayed(t, "greenerGrass") ? "#dcfce7" : "#f1f5f9",
+                                  color: isGamePlayed(t, "greenerGrass") ? "#15803d" : "#64748b",
+                                  cursor: "pointer",
+                                }}
+                                title={isGamePlayed(t, "greenerGrass") ? "Click to unlock replay" : "Click to mark as played"}
+                              >
+                                {isGamePlayed(t, "greenerGrass") ? "✓ Played" : "○ Ready"}
+                              </button>
+                            </div>
                           </td>
                           <td>
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              className="admin-score-input"
-                              value={headVal}
-                              onChange={(e) => handleScoreChange(t.name, "realHeadline", e.target.value)}
-                            />
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                className="admin-score-input"
+                                value={headVal}
+                                onChange={(e) => handleScoreChange(t.name, "realHeadline", e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleToggleUnlock(t.name, "realHeadline", isGamePlayed(t, "realHeadline"))}
+                                style={{
+                                  fontSize: "0.65rem",
+                                  fontWeight: 800,
+                                  padding: "0.15rem 0.35rem",
+                                  borderRadius: "4px",
+                                  border: isGamePlayed(t, "realHeadline") ? "1px solid #16a34a" : "1px dashed #94a3b8",
+                                  background: isGamePlayed(t, "realHeadline") ? "#dcfce7" : "#f1f5f9",
+                                  color: isGamePlayed(t, "realHeadline") ? "#15803d" : "#64748b",
+                                  cursor: "pointer",
+                                }}
+                                title={isGamePlayed(t, "realHeadline") ? "Click to unlock replay" : "Click to mark as played"}
+                              >
+                                {isGamePlayed(t, "realHeadline") ? "✓ Played" : "○ Ready"}
+                              </button>
+                            </div>
                           </td>
                           <td>
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              className="admin-score-input"
-                              value={tuneVal}
-                              onChange={(e) => handleScoreChange(t.name, "nameThatTune", e.target.value)}
-                            />
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                className="admin-score-input"
+                                value={tuneVal}
+                                onChange={(e) => handleScoreChange(t.name, "nameThatTune", e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleToggleUnlock(t.name, "nameThatTune", isGamePlayed(t, "nameThatTune"))}
+                                style={{
+                                  fontSize: "0.65rem",
+                                  fontWeight: 800,
+                                  padding: "0.15rem 0.35rem",
+                                  borderRadius: "4px",
+                                  border: isGamePlayed(t, "nameThatTune") ? "1px solid #16a34a" : "1px dashed #94a3b8",
+                                  background: isGamePlayed(t, "nameThatTune") ? "#dcfce7" : "#f1f5f9",
+                                  color: isGamePlayed(t, "nameThatTune") ? "#15803d" : "#64748b",
+                                  cursor: "pointer",
+                                }}
+                                title={isGamePlayed(t, "nameThatTune") ? "Click to unlock replay" : "Click to mark as played"}
+                              >
+                                {isGamePlayed(t, "nameThatTune") ? "✓ Played" : "○ Ready"}
+                              </button>
+                            </div>
                           </td>
                           <td>
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              className="admin-score-input"
-                              value={catVal}
-                              onChange={(e) => handleScoreChange(t.name, "categories", e.target.value)}
-                            />
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                className="admin-score-input"
+                                value={catVal}
+                                onChange={(e) => handleScoreChange(t.name, "categories", e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleToggleUnlock(t.name, "categories", isGamePlayed(t, "categories"))}
+                                style={{
+                                  fontSize: "0.65rem",
+                                  fontWeight: 800,
+                                  padding: "0.15rem 0.35rem",
+                                  borderRadius: "4px",
+                                  border: isGamePlayed(t, "categories") ? "1px solid #16a34a" : "1px dashed #94a3b8",
+                                  background: isGamePlayed(t, "categories") ? "#dcfce7" : "#f1f5f9",
+                                  color: isGamePlayed(t, "categories") ? "#15803d" : "#64748b",
+                                  cursor: "pointer",
+                                }}
+                                title={isGamePlayed(t, "categories") ? "Click to unlock replay" : "Click to mark as played"}
+                              >
+                                {isGamePlayed(t, "categories") ? "✓ Played" : "○ Ready"}
+                              </button>
+                            </div>
                           </td>
                           <td>
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              className="admin-score-input"
-                              value={milVal}
-                              onChange={(e) => handleScoreChange(t.name, "reverseMillionaire", e.target.value)}
-                            />
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                className="admin-score-input"
+                                value={milVal}
+                                onChange={(e) => handleScoreChange(t.name, "reverseMillionaire", e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleToggleUnlock(t.name, "reverseMillionaire", isGamePlayed(t, "reverseMillionaire"))}
+                                style={{
+                                  fontSize: "0.65rem",
+                                  fontWeight: 800,
+                                  padding: "0.15rem 0.35rem",
+                                  borderRadius: "4px",
+                                  border: isGamePlayed(t, "reverseMillionaire") ? "1px solid #16a34a" : "1px dashed #94a3b8",
+                                  background: isGamePlayed(t, "reverseMillionaire") ? "#dcfce7" : "#f1f5f9",
+                                  color: isGamePlayed(t, "reverseMillionaire") ? "#15803d" : "#64748b",
+                                  cursor: "pointer",
+                                }}
+                                title={isGamePlayed(t, "reverseMillionaire") ? "Click to unlock replay" : "Click to mark as played"}
+                              >
+                                {isGamePlayed(t, "reverseMillionaire") ? "✓ Played" : "○ Ready"}
+                              </button>
+                            </div>
                           </td>
                           <td>
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              className="admin-score-input"
-                              value={offVal}
-                              onChange={(e) => handleScoreChange(t.name, "offlineGame", e.target.value)}
-                            />
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                className="admin-score-input"
+                                value={offVal}
+                                onChange={(e) => handleScoreChange(t.name, "offlineGame", e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleToggleUnlock(t.name, "offlineGame", isGamePlayed(t, "offlineGame"))}
+                                style={{
+                                  fontSize: "0.65rem",
+                                  fontWeight: 800,
+                                  padding: "0.15rem 0.35rem",
+                                  borderRadius: "4px",
+                                  border: isGamePlayed(t, "offlineGame") ? "1px solid #16a34a" : "1px dashed #94a3b8",
+                                  background: isGamePlayed(t, "offlineGame") ? "#dcfce7" : "#f1f5f9",
+                                  color: isGamePlayed(t, "offlineGame") ? "#15803d" : "#64748b",
+                                  cursor: "pointer",
+                                }}
+                                title={isGamePlayed(t, "offlineGame") ? "Click to unlock replay" : "Click to mark as played"}
+                              >
+                                {isGamePlayed(t, "offlineGame") ? "✓ Played" : "○ Ready"}
+                              </button>
+                            </div>
                           </td>
                           <td className="admin-total-cell">
                             <strong>{currentTotal}</strong> / 600
@@ -1698,6 +3192,85 @@ export default function AdminPanel({
                     + ADD
                   </button>
                 </form>
+              </div>
+            </div>
+
+            {/* Game Plays & Replays Management */}
+            <div className="admin-section" style={{ marginTop: "1.5rem" }}>
+              <span className="admin-badge">GAME PLAYS & REPLAY ACCESS</span>
+              <h3 className="admin-section-title">Remove a Play for Any Team / Game</h3>
+              <p className="admin-section-sub">
+                Click on any played game below to remove the play, unlock replay access for that team, and clear previous submissions for that game.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginTop: "1rem" }}>
+                {teams.map((t) => (
+                  <div
+                    key={t.name}
+                    style={{
+                      background: "#f8fafc",
+                      border: "2px solid var(--ink)",
+                      borderRadius: "12px",
+                      padding: "0.85rem 1.1rem",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.6rem",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <strong style={{ fontSize: "1rem", color: "var(--ink)" }}>{t.name}</strong>
+                      <span style={{ fontSize: "0.8rem", color: "#64748b", fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                        {t.playedGames?.length || 0} / 6 Games Played
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
+                      {[
+                        { key: "greenerGrass", label: "Wordle" },
+                        { key: "realHeadline", label: "Real Headline" },
+                        { key: "nameThatTune", label: "Name That Tune" },
+                        { key: "categories", label: "Categories" },
+                        { key: "reverseMillionaire", label: "Rev. Millionaire" },
+                        { key: "offlineGame", label: "Bullseye" },
+                      ].map((g) => {
+                        const played = isGamePlayed(t, g.key);
+                        return (
+                          <button
+                            key={g.key}
+                            type="button"
+                            onClick={() => handleToggleUnlock(t.name, g.key, played, true)}
+                            style={{
+                              padding: "0.4rem 0.8rem",
+                              borderRadius: "8px",
+                              fontSize: "0.8rem",
+                              fontWeight: 800,
+                              fontFamily: "var(--font-mono)",
+                              cursor: "pointer",
+                              border: played ? "2px solid #dc2626" : "1.5px dashed #cbd5e1",
+                              background: played ? "#fee2e2" : "#ffffff",
+                              color: played ? "#991b1b" : "#64748b",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "0.35rem",
+                              transition: "all 0.15s ease",
+                            }}
+                            title={played ? `Click to remove play for ${g.label} on ${t.name}` : `Click to mark ${g.label} as played on ${t.name}`}
+                          >
+                            {played ? (
+                              <>
+                                <FontAwesomeIcon icon={faTrashCan} />
+                                {g.label} (Played • Click to Remove)
+                              </>
+                            ) : (
+                              <>
+                                <span style={{ opacity: 0.5 }}>○</span>
+                                {g.label} (Not Played)
+                              </>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 

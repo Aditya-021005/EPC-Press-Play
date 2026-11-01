@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { HEADLINES_POOL, HeadlineItem } from "@/data/headlines";
-import { fetchGameContent } from "@/lib/gameContent";
+import { pickNonRepeatingItems } from "@/lib/questionTracker";
 import { sound } from "@/lib/audio";
 import confetti from "canvas-confetti";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -18,22 +18,30 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 interface RealHeadlineProps {
+  isDemo?: boolean;
   onFinish: (score: number) => void;
   onBack: () => void;
-  onUpdateMeta?: (meta: { title: string; score: number; roundInfo?: string }) => void;
+  onUpdateMeta?: (meta: {
+    title: string;
+    score: number;
+    roundInfo?: string;
+    timeLeft?: number;
+    totalTime?: number;
+    onEndGame?: () => void;
+  }) => void;
 }
 
-export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHeadlineProps) {
-  const [rounds, setRounds] = useState<HeadlineItem[]>(() => {
-    return [...HEADLINES_POOL].sort(() => 0.5 - Math.random()).slice(0, 10);
+export default function RealHeadline({ isDemo = false, onFinish, onBack, onUpdateMeta }: RealHeadlineProps) {
+  const [rounds] = useState<HeadlineItem[]>(() => {
+    return pickNonRepeatingItems("epc_used_headlines", HEADLINES_POOL, 10, (h) => h.id);
   });
 
   useEffect(() => {
-    fetchGameContent().then((content) => {
-      if (content?.headlines && content.headlines.length > 0) {
-        setRounds([...content.headlines].sort(() => 0.5 - Math.random()).slice(0, 10));
-      }
-    });
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
   }, []);
 
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -76,13 +84,21 @@ export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHea
     };
   }, [currentIdx, isRevealed]);
 
+  const onUpdateMetaRef = useRef(onUpdateMeta);
   useEffect(() => {
-    onUpdateMeta?.({
+    onUpdateMetaRef.current = onUpdateMeta;
+  });
+
+  useEffect(() => {
+    onUpdateMetaRef.current?.({
       title: "Headlines",
       score,
       roundInfo: `Round ${currentIdx + 1}/10 • ${isRevealed ? "Revealed" : `${timeLeft}s`}`,
+      timeLeft: isRevealed ? undefined : timeLeft,
+      totalTime: 20,
+      onEndGame: () => onFinish(score),
     });
-  }, [score, currentIdx, timeLeft, isRevealed, onUpdateMeta]);
+  }, [score, currentIdx, timeLeft, isRevealed, onFinish]);
 
   const handleChoice = (choice: boolean) => {
     if (isRevealed) return;
@@ -95,18 +111,39 @@ export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHea
     if (isCorrect) {
       sound.playSuccess();
       confetti({ particleCount: 40, spread: 50 });
-      setScore((prev) => prev + 10);
+      const nextScore = score + 10;
+      setScore(nextScore);
+      onUpdateMeta?.({
+        title: "Headlines",
+        score: nextScore,
+        roundInfo: `Round ${currentIdx + 1}/10 • Revealed`,
+      });
     } else {
       sound.playBuzzer();
+      onUpdateMeta?.({
+        title: "Headlines",
+        score,
+        roundInfo: `Round ${currentIdx + 1}/10 • Revealed`,
+      });
     }
   };
+
+  const [autoAdvanceSec, setAutoAdvanceSec] = useState<number | null>(null);
+  const handleNextRef = useRef<() => void>(() => {});
 
   const handleNext = () => {
     sound.playClick();
     if (currentIdx + 1 < 10) {
-      setCurrentIdx((prev) => prev + 1);
+      const nextIdx = currentIdx + 1;
+      setCurrentIdx(nextIdx);
       setSelectedAnswer(null);
       setIsRevealed(false);
+      setAutoAdvanceSec(null);
+      onUpdateMeta?.({
+        title: "Headlines",
+        score,
+        roundInfo: `Round ${nextIdx + 1}/10 • 20s`,
+      });
     } else {
       // Completed all 10
       sound.playSuccess();
@@ -114,6 +151,32 @@ export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHea
       onFinish(score);
     }
   };
+
+  useEffect(() => {
+    handleNextRef.current = handleNext;
+  });
+
+  // Auto-advance in 5s when answer is revealed
+  useEffect(() => {
+    if (!isRevealed) {
+      setAutoAdvanceSec(null);
+      return;
+    }
+    setAutoAdvanceSec(5);
+    const advanceTimer = setInterval(() => {
+      setAutoAdvanceSec((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(advanceTimer);
+          handleNextRef.current();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(advanceTimer);
+  }, [isRevealed, currentIdx]);
 
   const isCorrect = selectedAnswer === currentItem?.isReal;
   const isTimeout = selectedAnswer === null && isRevealed;
@@ -182,8 +245,8 @@ export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHea
         {/* Newspaper Presentation Card */}
         <div className="newspaper-card">
           <div className="newspaper-header">
-            <span>{currentItem.outletHint}</span>
-            <span>EDITION #{currentIdx + 1}</span>
+            <span>HEADLINE DISPATCH</span>
+            <span>ROUND #{currentIdx + 1} OF 10</span>
           </div>
 
           <div className="news-body">
@@ -263,20 +326,17 @@ export default function RealHeadline({ onFinish, onBack, onUpdateMeta }: RealHea
               )}
             </h4>
 
-            <p className="reveal-context">{currentItem.explanation}</p>
-            <p style={{ fontSize: "0.8rem", color: "#94a3b8", marginBottom: "1.2rem" }}>
-              Source: <em>{currentItem.source}</em>
-            </p>
+            <div style={{ marginBottom: "1.2rem" }} />
 
-            <button className="btn-action btn-gold" onClick={handleNext} style={{ width: "100%", maxWidth: "350px" }}>
+            <button className="btn-action btn-gold" onClick={handleNext} style={{ width: "100%", maxWidth: "370px" }}>
               {currentIdx + 1 < 10 ? (
                 <>
-                  NEXT HEADLINE ({currentIdx + 2}/10)
+                  NEXT HEADLINE ({currentIdx + 2}/10) {autoAdvanceSec !== null ? `(${autoAdvanceSec}s)` : ""}
                   <FontAwesomeIcon icon={faPlay} style={{ marginLeft: "0.5rem" }} />
                 </>
               ) : (
                 <>
-                  FINISH ROUND & AUDIT SCORE
+                  FINISH ROUND & AUDIT SCORE {autoAdvanceSec !== null ? `(${autoAdvanceSec}s)` : ""}
                   <FontAwesomeIcon icon={faTrophy} style={{ marginLeft: "0.5rem" }} />
                 </>
               )}

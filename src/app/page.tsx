@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import ArcadeHeader from "@/components/layout/ArcadeHeader";
 import ArcadeHub from "@/components/hub/ArcadeHub";
 import GreenerGrass from "@/components/games/GreenerGrass";
@@ -28,8 +28,19 @@ import {
   submitPlayerGameResult,
   selectOrCreateTeam,
   playerLogout,
+  isGamePlayed,
 } from "@/lib/tournamentState";
 import { sound } from "@/lib/audio";
+
+export interface ActiveGameMeta {
+  title: string;
+  score: number;
+  roundInfo?: string;
+  timeLeft?: number;
+  totalTime?: number;
+  isDemo?: boolean;
+  onEndGame?: () => void;
+}
 
 export default function ArcadePage() {
   const [teams, setTeams] = useState<TeamScore[]>([]);
@@ -41,6 +52,7 @@ export default function ArcadePage() {
   const [adminPin, setAdminPin] = useState<string | null>(null);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [launchingGameId, setLaunchingGameId] = useState<string | null>(null);
+  const [gameMode, setGameMode] = useState<"official" | "demo">("official");
 
   // Celebration modal state
   const [celebrationData, setCelebrationData] = useState<{
@@ -48,22 +60,43 @@ export default function ArcadePage() {
     gameTitle: string;
     pointsEarned: number;
     newTotal: number;
+    isDemo?: boolean;
+    rawScore?: number;
   }>({
     isOpen: false,
     gameTitle: "",
     pointsEarned: 0,
     newTotal: 0,
+    isDemo: false,
+    rawScore: 0,
   });
 
   // In-Game topbar HUD metadata (back button & live score moved to topbar)
-  const [activeGameMeta, setActiveGameMeta] = useState<{
-    title: string;
-    score: number;
-    roundInfo?: string;
-    timeLeft?: number;
-    totalTime?: number;
-    onEndGame?: () => void;
-  } | null>(null);
+  const [activeGameMeta, setActiveGameMeta] = useState<ActiveGameMeta | null>(null);
+
+  // Multi-laptop Station Mode (e.g. "greener-grass", "headlines", "register", "all")
+  const [stationMode, setStationMode] = useState<string>("all");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlStation = urlParams.get("station");
+      if (urlStation) {
+        setStationMode(urlStation);
+        localStorage.setItem("epc_station_mode", urlStation);
+      } else {
+        const savedStation = localStorage.getItem("epc_station_mode") || "all";
+        setStationMode(savedStation);
+      }
+    }
+  }, []);
+
+  const handleSetStationMode = (mode: string) => {
+    setStationMode(mode);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("epc_station_mode", mode);
+    }
+  };
 
   // Initial load
   const loadState = useCallback(async () => {
@@ -89,20 +122,11 @@ export default function ArcadePage() {
       setTeams(backendData.teams);
       saveStoredTeams(backendData.teams);
 
-      // Only stay on hub if this browser session has an active logged-in user!
-      // If user finished turn / gave up, never auto-login from backend
+      // Independent multi-laptop session: keep this laptop's local session
       if (storedSessionUser) {
-        if (backendData.activeTeam) {
-          setActiveTeamName(backendData.activeTeam);
-          if (typeof window !== "undefined") {
-            sessionStorage.setItem("epc_active_session_user", backendData.activeTeam);
-          }
-        } else {
-          setActiveTeamName(storedSessionUser);
-        }
+        setActiveTeamName(storedSessionUser);
         setCurrentView("hub");
       } else {
-        // Clean logged-out state: stay on login gateway screen
         setActiveTeamName("");
         setCurrentView("login");
       }
@@ -125,25 +149,24 @@ export default function ArcadePage() {
       }, delay);
     });
 
-    // Periodic sync poll every 2.5s for real-time live host score evaluation & active team sync
+    // Periodic sync poll every 2.5s for real-time live host score evaluation & roster updates
     const pollInterval = setInterval(() => {
       fetchBackendTournamentState().then((backendData) => {
         if (backendData) {
-          setTeams(backendData.teams);
-          saveStoredTeams(backendData.teams);
+          setTeams((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(backendData.teams)) {
+              return prev;
+            }
+            saveStoredTeams(backendData.teams);
+            return backendData.teams;
+          });
 
-          // Only sync active team session if this client is currently logged in!
+          // Multi-laptop isolation: NEVER let another laptop's login hijack this laptop!
           const currentSession =
             typeof window !== "undefined" ? sessionStorage.getItem("epc_active_session_user") : null;
           if (currentSession) {
-            if (backendData.activeTeam) {
-              setActiveTeamName(backendData.activeTeam);
-              if (typeof window !== "undefined") {
-                sessionStorage.setItem("epc_active_session_user", backendData.activeTeam);
-              }
-            }
+            setActiveTeamName(currentSession);
           } else {
-            // Not logged in -> do not resurrect any previous team
             setActiveTeamName("");
           }
           setIsBackendConnected(true);
@@ -164,6 +187,7 @@ export default function ArcadePage() {
     offlineGame: 0,
     total: 0,
     lastUpdated: 0,
+    playedGames: [],
   };
 
   const handleAdminAuth = (pin: string | null) => {
@@ -173,6 +197,11 @@ export default function ArcadePage() {
 
   const handleLaunchComplete = useCallback((targetGameId: string) => {
     setLaunchingGameId(null);
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
     if (targetGameId === "arena-hub") {
       setCurrentView("hub");
     } else {
@@ -180,18 +209,34 @@ export default function ArcadePage() {
     }
   }, []);
 
-  const handleEnterArena = async (name: string) => {
+  const handleEnterArena = async (name: string, directGameId?: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
+
+    if (directGameId) {
+      const gKey = viewToGameKey(directGameId);
+      const targetTeam = teams.find((t) => t.name.toLowerCase() === trimmed.toLowerCase());
+      if (gKey && targetTeam && isGamePlayed(targetTeam, gKey)) {
+        sound.playHazard();
+        alert(`Team "${trimmed}" has already completed this challenge! Each team gets only 1 attempt per game.`);
+        return;
+      }
+    }
+
     setActiveTeamName(trimmed);
     if (typeof window !== "undefined") {
       sessionStorage.setItem("epc_active_session_user", trimmed);
     }
-    setCurrentView("hub");
+
+    if (directGameId) {
+      setLaunchingGameId(directGameId);
+    } else {
+      setCurrentView("hub");
+    }
+
     const result = await selectOrCreateTeam(trimmed);
     if (result) {
       setTeams(result.teams);
-      setActiveTeamName(result.activeTeam);
     }
   };
 
@@ -211,73 +256,283 @@ export default function ArcadePage() {
     await playerLogout(teamToLogout);
   };
 
-  // Legit Player Completion of a Game Round
-  // Legit Player Completion of a Game Round
+type PlayableGameKey =
+  | "greenerGrass"
+  | "realHeadline"
+  | "nameThatTune"
+  | "categories"
+  | "reverseMillionaire"
+  | "offlineGame";
+
+function viewToGameKey(view: string): PlayableGameKey | null {
+  switch (view) {
+    case "greener-grass":
+      return "greenerGrass";
+    case "headlines":
+      return "realHeadline";
+    case "name-tune":
+      return "nameThatTune";
+    case "categories":
+      return "categories";
+    case "reverse-millionaire":
+      return "reverseMillionaire";
+    case "offline":
+      return "offlineGame";
+    default:
+      return null;
+  }
+}
+
+  // Session base scores: records team's starting scores when entering a game
+  const gameSessionBaseRef = useRef<{ baseGameScore: number; baseTotal: number }>({
+    baseGameScore: 0,
+    baseTotal: 0,
+  });
+  const prevViewRef = useRef<string>("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+    if (currentView !== prevViewRef.current) {
+      prevViewRef.current = currentView;
+      if (currentView === "login" || currentView === "hub") {
+        setActiveGameMeta(null);
+      } else {
+        const gameKey = viewToGameKey(currentView);
+        if (gameKey) {
+          const currentTeam = teams.find((t) => t.name === activeTeamName);
+          gameSessionBaseRef.current = {
+            baseGameScore: (currentTeam ? currentTeam[gameKey] : 0) || 0,
+            baseTotal: (currentTeam ? currentTeam.total : 0) || 0,
+          };
+        }
+      }
+    }
+  }, [currentView, activeTeamName, teams]);
+
+  // Live progressive score update during game play (syncs net score simultaneously)
+  const handleLiveGameScoreUpdate = useCallback(
+    (
+      gameKey: keyof Omit<TeamScore, "name" | "total" | "lastUpdated">,
+      meta: ActiveGameMeta
+    ) => {
+      // Defer state update to microtask so React never updates parent state synchronously during a child component's render phase
+      queueMicrotask(() => {
+        // Guard: strictly ignore updates if user is not currently in this game (e.g. back on hub)
+        if (viewToGameKey(currentView) !== gameKey) {
+          return;
+        }
+
+        // Guard: ignore if this game has already been completed in official mode
+        const currentTeam = teams.find((t) => t.name.trim().toLowerCase() === activeTeamName.trim().toLowerCase());
+        if (gameMode === "official" && currentTeam && isGamePlayed(currentTeam, gameKey)) {
+          return;
+        }
+
+        // Check if values actually changed before triggering a re-render in page.tsx
+        setActiveGameMeta((prev) => {
+          const nextMeta: ActiveGameMeta = {
+            ...meta,
+            isDemo: gameMode === "demo",
+          };
+          if (
+            prev &&
+            prev.title === nextMeta.title &&
+            prev.score === nextMeta.score &&
+            prev.roundInfo === nextMeta.roundInfo &&
+            prev.timeLeft === nextMeta.timeLeft &&
+            prev.totalTime === nextMeta.totalTime &&
+            prev.isDemo === nextMeta.isDemo
+          ) {
+            return prev;
+          }
+          return nextMeta;
+        });
+
+        // If playing in demo mode, do NOT add or sync points to team scorecard!
+        if (gameMode === "demo") {
+          return;
+        }
+
+        if (activeTeamName && meta.score !== undefined) {
+          const sessionEarned = Math.max(0, meta.score);
+          const baseGame = gameSessionBaseRef.current.baseGameScore;
+          const baseTot = gameSessionBaseRef.current.baseTotal;
+          const newScore = Math.min(100, baseGame + sessionEarned);
+          const newTotal = baseTot + sessionEarned;
+
+          setTeams((prevTeams) => {
+            const activeNameClean = activeTeamName.trim().toLowerCase();
+            let changed = false;
+            let found = false;
+
+            const updated = prevTeams.map((team) => {
+              if (team.name.trim().toLowerCase() === activeNameClean) {
+                found = true;
+                if (team[gameKey] === newScore && team.total === newTotal) {
+                  return team;
+                }
+                changed = true;
+                return {
+                  ...team,
+                  [gameKey]: newScore,
+                  total: newTotal,
+                  lastUpdated: Date.now(),
+                };
+              }
+              return team;
+            });
+
+            if (!found && activeTeamName) {
+              changed = true;
+              const newTeamObj: TeamScore = {
+                name: activeTeamName,
+                greenerGrass: gameKey === "greenerGrass" ? newScore : 0,
+                realHeadline: gameKey === "realHeadline" ? newScore : 0,
+                nameThatTune: gameKey === "nameThatTune" ? newScore : 0,
+                categories: gameKey === "categories" ? newScore : 0,
+                reverseMillionaire: gameKey === "reverseMillionaire" ? newScore : 0,
+                offlineGame: gameKey === "offlineGame" ? newScore : 0,
+                total: newTotal,
+                lastUpdated: Date.now(),
+                playedGames: [],
+              };
+              updated.push(newTeamObj);
+            }
+
+            if (changed) {
+              saveStoredTeams(updated);
+              return updated;
+            }
+            return prevTeams;
+          });
+        }
+      });
+    },
+    [activeTeamName, currentView, gameMode, teams]
+  );
+
+  const handleUpdateGreenerGrass = useCallback(
+    (meta: ActiveGameMeta) => handleLiveGameScoreUpdate("greenerGrass", meta),
+    [handleLiveGameScoreUpdate]
+  );
+  const handleUpdateHeadlines = useCallback(
+    (meta: ActiveGameMeta) => handleLiveGameScoreUpdate("realHeadline", meta),
+    [handleLiveGameScoreUpdate]
+  );
+  const handleUpdateNameTune = useCallback(
+    (meta: ActiveGameMeta) => handleLiveGameScoreUpdate("nameThatTune", meta),
+    [handleLiveGameScoreUpdate]
+  );
+  const handleUpdateCategories = useCallback(
+    (meta: ActiveGameMeta) => handleLiveGameScoreUpdate("categories", meta),
+    [handleLiveGameScoreUpdate]
+  );
+  const handleUpdateReverseMillionaire = useCallback(
+    (meta: ActiveGameMeta) => handleLiveGameScoreUpdate("reverseMillionaire", meta),
+    [handleLiveGameScoreUpdate]
+  );
+  const handleUpdateOffline = useCallback(
+    (meta: ActiveGameMeta) => handleLiveGameScoreUpdate("offlineGame", meta),
+    [handleLiveGameScoreUpdate]
+  );
+
+  // Player Completion of a Game Round
   const handleGameFinish = async (
-    gameKey: keyof Omit<TeamScore, "name" | "total" | "lastUpdated">,
+    gameKey: keyof Omit<TeamScore, "name" | "total" | "lastUpdated" | "playedGames">,
     title: string,
     score: number
   ) => {
-    let finalTeamTotal = activeTeam.total;
+    const sessionEarned = Math.max(0, score);
 
-    if (score >= 0) {
-      const activeNameClean = (activeTeam.name || "").trim().toLowerCase();
+    // DEMO RUN: Do NOT save points to team and do NOT mark playedGames!
+    if (gameMode === "demo") {
+      setActiveGameMeta(null);
+      sound.playSuccess();
+      setCelebrationData({
+        isOpen: true,
+        gameTitle: title,
+        pointsEarned: 0,
+        rawScore: sessionEarned,
+        newTotal: activeTeam.total,
+        isDemo: true,
+      });
+      return;
+    }
+
+    const baseGame = gameSessionBaseRef.current.baseGameScore;
+    const baseTot = gameSessionBaseRef.current.baseTotal;
+    const newScore = Math.min(100, baseGame + sessionEarned);
+    const finalTeamTotal = baseTot + sessionEarned;
+
+    if (activeTeamName) {
+      const activeNameClean = activeTeamName.trim().toLowerCase();
       let found = false;
 
       const updated = teams.map((team) => {
         if (team.name.trim().toLowerCase() === activeNameClean) {
           found = true;
-          const newScore = Math.max(team[gameKey] || 0, score);
-          const newTotal =
-            (gameKey === "greenerGrass" ? newScore : team.greenerGrass) +
-            (gameKey === "realHeadline" ? newScore : team.realHeadline) +
-            (gameKey === "nameThatTune" ? newScore : team.nameThatTune) +
-            (gameKey === "categories" ? newScore : team.categories) +
-            (gameKey === "reverseMillionaire" ? newScore : team.reverseMillionaire) +
-            (gameKey === "offlineGame" ? newScore : team.offlineGame);
-
-          finalTeamTotal = newTotal;
+          const played = Array.isArray(team.playedGames) ? [...team.playedGames] : [];
+          if (!played.includes(gameKey)) {
+            played.push(gameKey);
+          }
           return {
             ...team,
             [gameKey]: newScore,
-            total: newTotal,
+            total: finalTeamTotal,
             lastUpdated: Date.now(),
+            playedGames: played,
           };
         }
         return team;
       });
 
-      if (!found && activeTeam.name) {
+      if (!found) {
         const newTeamObj: TeamScore = {
-          name: activeTeam.name,
-          greenerGrass: gameKey === "greenerGrass" ? score : 0,
-          realHeadline: gameKey === "realHeadline" ? score : 0,
-          nameThatTune: gameKey === "nameThatTune" ? score : 0,
-          categories: gameKey === "categories" ? score : 0,
-          reverseMillionaire: gameKey === "reverseMillionaire" ? score : 0,
-          offlineGame: gameKey === "offlineGame" ? score : 0,
-          total: score,
+          name: activeTeamName,
+          greenerGrass: gameKey === "greenerGrass" ? newScore : 0,
+          realHeadline: gameKey === "realHeadline" ? newScore : 0,
+          nameThatTune: gameKey === "nameThatTune" ? newScore : 0,
+          categories: gameKey === "categories" ? newScore : 0,
+          reverseMillionaire: gameKey === "reverseMillionaire" ? newScore : 0,
+          offlineGame: gameKey === "offlineGame" ? newScore : 0,
+          total: finalTeamTotal,
           lastUpdated: Date.now(),
+          playedGames: [gameKey],
         };
         updated.push(newTeamObj);
-        finalTeamTotal = score;
       }
 
       setTeams(updated);
       saveStoredTeams(updated);
-      await submitPlayerGameResult(activeTeam.name, gameKey, score);
+      const res = await submitPlayerGameResult(activeTeamName, gameKey, newScore);
+      if (res && res.alreadyPlayed) {
+        sound.playHazard();
+        alert(`Notice: Team "${activeTeamName}" has already completed this game previously.`);
+      }
     }
 
-    if (score > 0) {
+    if (sessionEarned > 0) {
       setCelebrationData({
         isOpen: true,
         gameTitle: title,
-        pointsEarned: score,
+        pointsEarned: sessionEarned,
         newTotal: finalTeamTotal,
       });
     } else {
       setActiveGameMeta(null);
-      setCurrentView("hub");
+      if (stationMode && stationMode !== "all" && stationMode !== "register") {
+        if (typeof window !== "undefined") {
+          sessionStorage.removeItem("epc_active_session_user");
+        }
+        setActiveTeamName("");
+        setCurrentView("login");
+      } else {
+        setCurrentView("hub");
+      }
     }
   };
 
@@ -285,24 +540,63 @@ export default function ArcadePage() {
     sound.playClick();
     setCelebrationData((prev) => ({ ...prev, isOpen: false }));
     setActiveGameMeta(null);
-    setCurrentView("hub");
+    if (stationMode && stationMode !== "all" && stationMode !== "register") {
+      // In dedicated station mode, return immediately to the team selector for the next player!
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("epc_active_session_user");
+      }
+      setActiveTeamName("");
+      setCurrentView("login");
+    } else {
+      setCurrentView("hub");
+    }
   };
 
   if (!isClient || isAppLoading) {
     return <ArcadeBootLoader />;
   }
 
-  // VIEW: ENTER USERNAME GATEWAY
+  // VIEW: ENTER USERNAME / SELECT TEAM GATEWAY
   if (currentView === "login") {
     return (
       <div className="view-transition-wrap">
         <LoginGateway
           allTeams={teams}
           onEnterArena={handleEnterArena}
+          stationMode={stationMode}
+          onSetStationMode={handleSetStationMode}
         />
       </div>
     );
   }
+
+  const renderAlreadyPlayedNotice = (
+    gameTitle: string,
+    gameKey: keyof Omit<TeamScore, "name" | "total" | "lastUpdated" | "playedGames">
+  ) => (
+    <div className="game-arena" style={{ textAlign: "center", padding: "4rem 1.5rem" }}>
+      <div style={{ fontSize: "3.5rem", marginBottom: "1rem" }}>🔒</div>
+      <h2 style={{ fontSize: "2.2rem", fontWeight: 900, color: "#ffd700", marginBottom: "0.5rem" }}>
+        {gameTitle} Already Completed
+      </h2>
+      <p style={{ color: "#c8b8ec", fontSize: "1.05rem", maxWidth: "480px", margin: "0 auto 1.5rem", lineHeight: 1.6 }}>
+        Team <strong>{activeTeam.name}</strong> has already played this challenge and scored{" "}
+        <strong>{activeTeam[gameKey]} / 100 points</strong>. Each team is permitted only 1 attempt per game.
+      </p>
+      <button
+        type="button"
+        className="btn-action btn-gold"
+        onClick={() => {
+          sound.playClick();
+          setActiveGameMeta(null);
+          setCurrentView("hub");
+        }}
+        style={{ padding: "0.85rem 1.8rem", fontSize: "1rem", fontWeight: 900, cursor: "pointer" }}
+      >
+        Return to Arcade Hub
+      </button>
+    </div>
+  );
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -312,11 +606,19 @@ export default function ArcadePage() {
         onGoHome={() => {
           sound.playClick();
           setActiveGameMeta(null);
-          setCurrentView("hub");
+          if (stationMode && stationMode !== "all" && stationMode !== "register") {
+            if (typeof window !== "undefined") {
+              sessionStorage.removeItem("epc_active_session_user");
+            }
+            setActiveTeamName("");
+            setCurrentView("login");
+          } else {
+            setCurrentView("hub");
+          }
         }}
         onLogout={() => setIsLogoutModalOpen(true)}
         isBackendConnected={isBackendConnected}
-        gameMeta={activeGameMeta}
+        gameMeta={currentView !== "hub" && currentView !== "login" ? activeGameMeta : null}
       />
 
       <main className="arcade-main">
@@ -326,7 +628,14 @@ export default function ArcadePage() {
             <ArcadeHub
               activeTeam={activeTeam}
               allTeams={teams}
-              onSelectGame={(gameId) => {
+              onSelectGame={(gameId, mode) => {
+                const gKey = viewToGameKey(gameId);
+                if (mode === "official" && gKey && isGamePlayed(activeTeam, gKey)) {
+                  sound.playHazard();
+                  alert(`Notice: Team "${activeTeam.name}" has already completed this game in normal playing! (1 play limit)`);
+                  return;
+                }
+                setGameMode(mode);
                 setActiveGameMeta(null);
                 setLaunchingGameId(gameId);
               }}
@@ -336,101 +645,133 @@ export default function ArcadePage() {
 
         {/* GAME 1: GREENER GRASS */}
         {currentView === "greener-grass" && (
-          <GreenerGrass
-            onFinish={(score) => {
-              setActiveGameMeta(null);
-              handleGameFinish("greenerGrass", "Greener Grass", score);
-            }}
-            onBack={() => {
-              sound.playClick();
-              setActiveGameMeta(null);
-              setCurrentView("hub");
-            }}
-            onUpdateMeta={setActiveGameMeta}
-          />
+          isGamePlayed(activeTeam, "greenerGrass") && gameMode === "official" ? (
+            renderAlreadyPlayedNotice("Greener Grass", "greenerGrass")
+          ) : (
+            <GreenerGrass
+              isDemo={gameMode === "demo"}
+              onFinish={(score) => {
+                setActiveGameMeta(null);
+                handleGameFinish("greenerGrass", "Greener Grass", score);
+              }}
+              onBack={() => {
+                sound.playClick();
+                setActiveGameMeta(null);
+                setCurrentView("hub");
+              }}
+              onUpdateMeta={handleUpdateGreenerGrass}
+            />
+          )
         )}
 
         {/* GAME 2: REAL HEADLINE OR NOT */}
         {currentView === "headlines" && (
-          <RealHeadline
-            onFinish={(score) => {
-              setActiveGameMeta(null);
-              handleGameFinish("realHeadline", "Real Headline or Not", score);
-            }}
-            onBack={() => {
-              sound.playClick();
-              setActiveGameMeta(null);
-              setCurrentView("hub");
-            }}
-            onUpdateMeta={setActiveGameMeta}
-          />
+          isGamePlayed(activeTeam, "realHeadline") && gameMode === "official" ? (
+            renderAlreadyPlayedNotice("Real Headline or Not", "realHeadline")
+          ) : (
+            <RealHeadline
+              isDemo={gameMode === "demo"}
+              onFinish={(score) => {
+                setActiveGameMeta(null);
+                handleGameFinish("realHeadline", "Real Headline or Not", score);
+              }}
+              onBack={() => {
+                sound.playClick();
+                setActiveGameMeta(null);
+                setCurrentView("hub");
+              }}
+              onUpdateMeta={handleUpdateHeadlines}
+            />
+          )
         )}
 
         {/* GAME 3: NAME THAT TUNE */}
         {currentView === "name-tune" && (
-          <NameThatTune
-            onFinish={(score) => {
-              setActiveGameMeta(null);
-              handleGameFinish("nameThatTune", "Name That Tune", score);
-            }}
-            onBack={() => {
-              sound.playClick();
-              setActiveGameMeta(null);
-              setCurrentView("hub");
-            }}
-            onUpdateMeta={setActiveGameMeta}
-          />
+          isGamePlayed(activeTeam, "nameThatTune") && gameMode === "official" ? (
+            renderAlreadyPlayedNotice("Name That Tune", "nameThatTune")
+          ) : (
+            <NameThatTune
+              activeTeamName={activeTeam.name}
+              isDemo={gameMode === "demo"}
+              onFinish={(score) => {
+                setActiveGameMeta(null);
+                handleGameFinish("nameThatTune", "Name That Tune", score);
+              }}
+              onBack={() => {
+                sound.playClick();
+                setActiveGameMeta(null);
+                setCurrentView("hub");
+              }}
+              onUpdateMeta={handleUpdateNameTune}
+            />
+          )
         )}
 
         {/* GAME 4: CATEGORIES */}
         {currentView === "categories" && (
-          <Categories
-            onFinish={(score) => {
-              setActiveGameMeta(null);
-              handleGameFinish("categories", "Categories (Scattergories)", score);
-            }}
-            onBack={() => {
-              sound.playClick();
-              setActiveGameMeta(null);
-              setCurrentView("hub");
-            }}
-            onUpdateMeta={setActiveGameMeta}
-          />
+          isGamePlayed(activeTeam, "categories") && gameMode === "official" ? (
+            renderAlreadyPlayedNotice("Categories", "categories")
+          ) : (
+            <Categories
+              activeTeamName={activeTeam.name}
+              isDemo={gameMode === "demo"}
+              onFinish={(score) => {
+                setActiveGameMeta(null);
+                handleGameFinish("categories", "Categories (Scattergories)", score);
+              }}
+              onBack={() => {
+                sound.playClick();
+                setActiveGameMeta(null);
+                setCurrentView("hub");
+              }}
+              onUpdateMeta={handleUpdateCategories}
+            />
+          )
         )}
 
         {/* GAME 5: REVERSE MILLIONAIRE */}
         {currentView === "reverse-millionaire" && (
-          <ReverseMillionaire
-            onFinish={(score) => {
-              setActiveGameMeta(null);
-              handleGameFinish("reverseMillionaire", "Reverse Who Wants To Be A Millionaire", score);
-            }}
-            onBack={() => {
-              sound.playClick();
-              setActiveGameMeta(null);
-              setCurrentView("hub");
-            }}
-            onUpdateMeta={setActiveGameMeta}
-          />
+          isGamePlayed(activeTeam, "reverseMillionaire") && gameMode === "official" ? (
+            renderAlreadyPlayedNotice("Reverse Millionaire", "reverseMillionaire")
+          ) : (
+            <ReverseMillionaire
+              isDemo={gameMode === "demo"}
+              onFinish={(score) => {
+                setActiveGameMeta(null);
+                handleGameFinish("reverseMillionaire", "Reverse Who Wants To Be A Millionaire", score);
+              }}
+              onBack={() => {
+                sound.playClick();
+                setActiveGameMeta(null);
+                setCurrentView("hub");
+              }}
+              onUpdateMeta={handleUpdateReverseMillionaire}
+            />
+          )
         )}
 
         {/* GAME 6: BULLSEYE (LIVE ARENA) */}
         {currentView === "offline" && (
-          <OfflineArena
-            currentScore={activeTeam.offlineGame}
-            activeTeamName={activeTeam.name}
-            adminPin={adminPin}
-            onFinish={(score) => {
-              setActiveGameMeta(null);
-              handleGameFinish("offlineGame", "Bullseye: Darts & Archery Arena", score);
-            }}
-            onBack={() => {
-              sound.playClick();
-              setActiveGameMeta(null);
-              setCurrentView("hub");
-            }}
-            onUpdateMeta={setActiveGameMeta}
-          />
+          isGamePlayed(activeTeam, "offlineGame") && gameMode === "official" ? (
+            renderAlreadyPlayedNotice("Bullseye", "offlineGame")
+          ) : (
+            <OfflineArena
+              currentScore={activeTeam.offlineGame}
+              activeTeamName={activeTeam.name}
+              adminPin={adminPin}
+              isDemo={gameMode === "demo"}
+              onFinish={(score) => {
+                setActiveGameMeta(null);
+                handleGameFinish("offlineGame", "Bullseye: Darts & Archery Arena", score);
+              }}
+              onBack={() => {
+                sound.playClick();
+                setActiveGameMeta(null);
+                setCurrentView("hub");
+              }}
+              onUpdateMeta={handleUpdateOffline}
+            />
+          )
         )}
         </div>
       </main>
@@ -440,6 +781,8 @@ export default function ArcadePage() {
         gameTitle={celebrationData.gameTitle}
         pointsEarned={celebrationData.pointsEarned}
         newTotal={celebrationData.newTotal}
+        isDemo={celebrationData.isDemo}
+        rawScore={celebrationData.rawScore}
         onClose={handleCloseCelebration}
       />
 
@@ -458,6 +801,7 @@ export default function ArcadePage() {
         <GameLaunchLoader
           gameId={launchingGameId}
           teamName={activeTeam.name}
+          mode={gameMode}
           onComplete={handleLaunchComplete}
         />
       )}

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { TARGET_WORDS, isValidWord } from "@/data/words";
-import { fetchGameContent } from "@/lib/gameContent";
 import { sound } from "@/lib/audio";
 import confetti from "canvas-confetti";
 import "@/styles/greener-grass.css";
@@ -22,7 +21,10 @@ import {
   faDeleteLeft,
 } from "@fortawesome/free-solid-svg-icons";
 
+import { pickNonRepeatingItems } from "@/lib/questionTracker";
+
 interface GreenerGrassProps {
+  isDemo?: boolean;
   onFinish: (score: number) => void;
   onBack: () => void;
   onUpdateMeta?: (meta: {
@@ -45,20 +47,18 @@ interface GuessRecord {
 const MAX_GUESSES = 6;
 const TURN_TIMEOUT_SECONDS = 30;
 
-export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: GreenerGrassProps) {
-  // 5 words per run
-  const [wordList, setWordList] = useState<string[]>(() => {
-    const shuffled = [...TARGET_WORDS].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 5);
+export default function GreenerGrass({ isDemo = false, onFinish, onBack, onUpdateMeta }: GreenerGrassProps) {
+  // 5 words per run (non-repeating until exhausted, strictly seeded data)
+  const [wordList] = useState<string[]>(() => {
+    return pickNonRepeatingItems("epc_used_words", TARGET_WORDS, 5, (w) => w);
   });
 
   useEffect(() => {
-    fetchGameContent().then((content) => {
-      if (content?.words && content.words.length > 0) {
-        const shuffled = [...content.words].sort(() => 0.5 - Math.random());
-        setWordList(shuffled.slice(0, 5));
-      }
-    });
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
   }, []);
 
   const [currentWordIdx, setCurrentWordIdx] = useState(0);
@@ -67,6 +67,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
   const [hazardTriggered, setHazardTriggered] = useState(false);
   const [totalGameScore, setTotalGameScore] = useState(0);
   const [currentWordBanked, setCurrentWordBanked] = useState(0);
+  const [securedIndices, setSecuredIndices] = useState<number[]>([]);
   const [statusMsg, setStatusMsg] = useState("Type a guess or use the on-screen keyboard.");
   const [wordFinished, setWordFinished] = useState(false);
   const [keyboardLetterStatus, setKeyboardLetterStatus] = useState<Record<string, TileStatus>>({});
@@ -85,6 +86,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
     setCurrentGuess("");
     setHazardTriggered(false);
     setCurrentWordBanked(0);
+    setSecuredIndices([]);
     setWordFinished(false);
     setStatusMsg("Type a guess or use the on-screen keyboard.");
     setKeyboardLetterStatus({});
@@ -139,9 +141,6 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
         return;
       }
 
-      // Reset timer for next guess
-      setTimeLeft(TURN_TIMEOUT_SECONDS);
-
       // Evaluate guess
       const guessArr = currentGuess.split("");
       const targetArr = targetWord.split("");
@@ -154,6 +153,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
 
       let greenCount = 0;
       let hasYellow = false;
+      const turnGreenIndices: number[] = [];
 
       // Pass 1: Greens (exact match)
       for (let i = 0; i < 5; i++) {
@@ -161,6 +161,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
           newStatuses[i] = "green";
           targetLetterCounts[guessArr[i]]--;
           greenCount++;
+          turnGreenIndices.push(i);
         }
       }
 
@@ -195,40 +196,93 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
       setGuesses(updatedGuesses);
       setCurrentGuess("");
 
-      // Check for yellow hazard
+      // Identify newly discovered green positions for THIS word (avoid duplicate points for already secured greens)
+      const newlyFoundIndices = turnGreenIndices.filter((idx) => !securedIndices.includes(idx));
+      const updatedSecuredIndices = Array.from(new Set([...securedIndices, ...turnGreenIndices]));
+      const newGreensCount = newlyFoundIndices.length;
+      const turnPoints = newGreensCount * 4;
+      const nextTotalScore = totalGameScore + turnPoints;
+      const nextWordBanked = updatedSecuredIndices.length * 4;
+
+      if (turnPoints > 0) {
+        sound.playCoinDrop();
+        setTotalGameScore(nextTotalScore);
+        setCurrentWordBanked(nextWordBanked);
+        setSecuredIndices(updatedSecuredIndices);
+      }
+
+      // Reset timer for the next guess
+      setTimeLeft(TURN_TIMEOUT_SECONDS);
+
+      // HAZARD CHECK: Yellow tile terminates the current word immediately
       if (hasYellow) {
+        if (timerRef.current) clearInterval(timerRef.current);
         sound.playHazardAlarm();
         setHazardTriggered(true);
         setWordFinished(true);
-        setStatusMsg(`YELLOW HAZARD! Word contained letters in wrong spots. Target was '${targetWord}'`);
+        setStatusMsg(`HAZARD DETECTED! Yellow tile hit (letter in wrong spot). Word terminated! Target was '${targetWord}'.`);
+        onUpdateMeta?.({
+          title: "Greener Grass",
+          score: nextTotalScore,
+          roundInfo: `Word ${currentWordIdx + 1}/5`,
+          timeLeft: 0,
+          totalTime: TURN_TIMEOUT_SECONDS,
+          onEndGame: () => finishGame(nextTotalScore),
+        });
         return;
       }
 
-      // Safe: calculate banked greens (4 pts per green)
-      const earned = greenCount * 4;
-      const newBanked = Math.max(currentWordBanked, earned);
-      setCurrentWordBanked(newBanked);
-
       // Check for 5 greens (Full solve)
-      if (greenCount === 5) {
+      if (greenCount === 5 || updatedSecuredIndices.length === 5) {
         sound.playSuccess();
-        confetti({ particleCount: 60, spread: 65 });
+        confetti({ particleCount: 75, spread: 70 });
         setWordFinished(true);
-        setStatusMsg(`SOLVED! All 5 greens matched (+20 PTS)! Word was '${targetWord}'`);
-        setTotalGameScore((prev) => prev + 20);
+        setStatusMsg(`SOLVED! All 5 greens matched (+20 PTS for this word)! Word was '${targetWord}'`);
         setSolvedWordsCount((prev) => prev + 1);
+        onUpdateMeta?.({
+          title: "Greener Grass",
+          score: nextTotalScore,
+          roundInfo: `Word ${currentWordIdx + 1}/5`,
+          timeLeft: 0,
+          totalTime: TURN_TIMEOUT_SECONDS,
+          onEndGame: () => finishGame(nextTotalScore),
+        });
         return;
       }
 
       // Check if max guesses (6) reached
       if (updatedGuesses.length >= MAX_GUESSES) {
         setWordFinished(true);
-        setStatusMsg(`All 6 guesses used! Banked ${newBanked} pts. Target was '${targetWord}'`);
-        setTotalGameScore((prev) => prev + newBanked);
-        if (newBanked > 0) setSolvedWordsCount((prev) => prev + 1);
+        setStatusMsg(`All 6 guesses used! Final score for this word: ${nextWordBanked} pts. Target was '${targetWord}'. Click below to proceed.`);
+        if (nextWordBanked > 0) {
+          setSolvedWordsCount((prev) => prev + 1);
+        }
+        onUpdateMeta?.({
+          title: "Greener Grass",
+          score: nextTotalScore,
+          roundInfo: `Word ${currentWordIdx + 1}/5`,
+          timeLeft: 0,
+          totalTime: TURN_TIMEOUT_SECONDS,
+          onEndGame: () => finishGame(nextTotalScore),
+        });
       } else {
-        sound.playSuccess();
-        setStatusMsg(`Safe! +${newBanked} pts available. Bank greens or keep guessing!`);
+        if (newGreensCount > 0) {
+          setStatusMsg(`+${turnPoints} PTS ADDED! (${newGreensCount} NEW green${newGreensCount > 1 ? "s" : ""} secured, ${updatedSecuredIndices.length}/5 total)! Keep guessing.`);
+        } else if (greenCount > 0) {
+          sound.playClick();
+          setStatusMsg(`All ${greenCount} green letter${greenCount > 1 ? "s" : ""} were already secured (+0 pts). Find new greens!`);
+        } else {
+          sound.playClick();
+          setStatusMsg("0 greens on this guess. Use yellow hints to deduce the word and keep guessing!");
+        }
+        onUpdateMeta?.({
+          title: "Greener Grass",
+          score: nextTotalScore,
+          roundInfo: `Word ${currentWordIdx + 1}/5`,
+          timeLeft: TURN_TIMEOUT_SECONDS,
+          totalTime: TURN_TIMEOUT_SECONDS,
+          onEndGame: () => finishGame(nextTotalScore),
+        });
       }
     } else if (key === "BACKSPACE" || key === "DEL") {
       sound.playClick(400);
@@ -237,7 +291,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
       sound.playClick(600);
       setCurrentGuess((prev) => prev + key);
     }
-  }, [currentGuess, targetWord, hazardTriggered, wordFinished, guesses, currentWordBanked, keyboardLetterStatus]);
+  }, [currentGuess, targetWord, hazardTriggered, wordFinished, guesses, currentWordBanked, keyboardLetterStatus, totalGameScore, currentWordIdx, timeLeft, onUpdateMeta, securedIndices]);
 
   // Listen to physical keyboard typing
   useEffect(() => {
@@ -254,26 +308,13 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyPress]);
 
-  // Bank greens and advance
-  const bankAndAdvance = () => {
-    sound.playCoinDrop();
-    const finalScore = totalGameScore + currentWordBanked;
-    setTotalGameScore(finalScore);
-    if (currentWordBanked > 0) {
-      setSolvedWordsCount((prev) => prev + 1);
-    }
-
-    if (currentWordIdx + 1 < 5) {
-      setCurrentWordIdx((prev) => prev + 1);
-      initWord();
-    } else {
-      finishGame(finalScore);
-    }
-  };
+  const [autoAdvanceSec, setAutoAdvanceSec] = useState<number | null>(null);
+  const handleNextWordRef = useRef<() => void>(() => {});
 
   // Next word after round finish or hazard
   const handleNextWord = () => {
     sound.playClick();
+    setAutoAdvanceSec(null);
     if (currentWordIdx + 1 < 5) {
       setCurrentWordIdx((prev) => prev + 1);
       initWord();
@@ -281,6 +322,32 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
       finishGame(totalGameScore);
     }
   };
+
+  useEffect(() => {
+    handleNextWordRef.current = handleNextWord;
+  });
+
+  // Auto-advance in 5s when word is finished or hazard triggered
+  useEffect(() => {
+    if (!hazardTriggered && !wordFinished) {
+      setAutoAdvanceSec(null);
+      return;
+    }
+    setAutoAdvanceSec(5);
+    const advanceTimer = setInterval(() => {
+      setAutoAdvanceSec((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(advanceTimer);
+          handleNextWordRef.current();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(advanceTimer);
+  }, [hazardTriggered, wordFinished, currentWordIdx]);
 
   const finishGame = (score: number) => {
     sound.playSuccess();
@@ -294,9 +361,14 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
     ["ENTER", "Z", "X", "C", "V", "B", "N", "M", "⌫"],
   ];
 
+  const onUpdateMetaRef = useRef(onUpdateMeta);
+  useEffect(() => {
+    onUpdateMetaRef.current = onUpdateMeta;
+  });
+
   // Sync with global header meta (Timer & End Game are integrated into ArcadeHeader)
   useEffect(() => {
-    onUpdateMeta?.({
+    onUpdateMetaRef.current?.({
       title: "Greener Grass",
       score: totalGameScore,
       roundInfo: `Word ${currentWordIdx + 1}/5`,
@@ -304,7 +376,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
       totalTime: TURN_TIMEOUT_SECONDS,
       onEndGame: () => finishGame(totalGameScore),
     });
-  }, [totalGameScore, currentWordIdx, timeLeft, hazardTriggered, wordFinished, onUpdateMeta]);
+  }, [totalGameScore, currentWordIdx, timeLeft, hazardTriggered, wordFinished]);
 
   // Format digital timer string: 0:29 or 1:59 style
   const formattedMinutes = Math.floor(timeLeft / 60);
@@ -407,7 +479,7 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
                 <span>{totalGameScore}</span>
               </div>
               {currentWordBanked > 0 && !wordFinished && (
-                <span className="gg-stat-sub">+{currentWordBanked} pts ready</span>
+                <span className="gg-stat-sub">+{currentWordBanked} pts this word</span>
               )}
             </div>
 
@@ -486,39 +558,26 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
               >
                 {currentWordIdx + 1 < 5 ? (
                   <>
-                    PROCEED TO WORD {currentWordIdx + 2} OF 5
+                    PROCEED TO WORD {currentWordIdx + 2} OF 5 {autoAdvanceSec !== null ? `(${autoAdvanceSec}s)` : ""}
                     <FontAwesomeIcon icon={faArrowRight} />
                   </>
                 ) : (
                   <>
-                    FINISH GAME & AUDIT SCORE
+                    FINISH GAME & AUDIT SCORE {autoAdvanceSec !== null ? `(${autoAdvanceSec}s)` : ""}
                     <FontAwesomeIcon icon={faTrophy} />
                   </>
                 )}
               </button>
             ) : (
-              <>
-                <button
-                  type="button"
-                  className="gg-submit-main-btn"
-                  onClick={() => handleKeyPress("ENTER")}
-                  disabled={currentGuess.length < 5}
-                >
-                  <FontAwesomeIcon icon={faCheck} />
-                  SUBMIT GUESS
-                </button>
-
-                {currentWordBanked > 0 && (
-                  <button
-                    type="button"
-                    className="gg-bank-advance-btn"
-                    onClick={bankAndAdvance}
-                  >
-                    <FontAwesomeIcon icon={faBuildingColumns} />
-                    BANK CURRENT GREENS (+{currentWordBanked} PTS) & ADVANCE
-                  </button>
-                )}
-              </>
+              <button
+                type="button"
+                className="gg-submit-main-btn"
+                onClick={() => handleKeyPress("ENTER")}
+                disabled={currentGuess.length < 5}
+              >
+                <FontAwesomeIcon icon={faCheck} />
+                SUBMIT GUESS
+              </button>
             )}
           </div>
         </div>
@@ -546,14 +605,14 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
               <div className="gg-rule-item">
                 <div className="gg-rule-icon ri-green">✓</div>
                 <div>
-                  <strong>GREEN TILE (+4 PTS):</strong> Letter is in the word and in the exact correct position.
+                  <strong>GREEN TILE (+4 PTS):</strong> Letter is in the exact spot. Every green tile adds +4 PTS instantly to your score on that turn!
                 </div>
               </div>
 
               <div className="gg-rule-item">
                 <div className="gg-rule-icon ri-yellow">!</div>
                 <div>
-                  <strong>YELLOW TILE (HAZARD!):</strong> Letter is in the word but wrong spot. This causes a hazard and ends your current word turn!
+                  <strong>YELLOW TILE (HAZARD!):</strong> Letter is in the word but wrong spot. When yellow appears, time stops immediately and that particular word is terminated!
                 </div>
               </div>
 
@@ -567,14 +626,14 @@ export default function GreenerGrass({ onFinish, onBack, onUpdateMeta }: Greener
               <div className="gg-rule-item">
                 <div className="gg-rule-icon ri-green">★</div>
                 <div>
-                  <strong>ALL 5 GREENS (+20 PTS):</strong> Matching all 5 green letters scores the maximum +20 points for that word!
+                  <strong>ALL 5 GREENS (+20 PTS):</strong> Matching all 5 green letters solves the word and awards the full +20 PTS solve!
                 </div>
               </div>
 
               <div className="gg-rule-item">
                 <div className="gg-rule-icon ri-yellow">⏱</div>
                 <div>
-                  <strong>30s PER TURN:</strong> Submit each guess before the timer runs out. You can bank your earned greens anytime to advance safely!
+                  <strong>30s PER GUESS:</strong> You have 30 seconds per guess and up to 6 guesses per word. Points from green letters are secured permanently to your score!
                 </div>
               </div>
             </div>

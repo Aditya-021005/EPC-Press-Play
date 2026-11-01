@@ -11,6 +11,7 @@ import {
   getStoredAdminAuth,
   setStoredAdminAuth,
   fetchBackendTournamentState,
+  GameSubmissionRecord,
 } from "@/lib/tournamentState";
 import { sound } from "@/lib/audio";
 
@@ -19,6 +20,7 @@ export default function AdminRoutePage() {
   const [teams, setTeams] = useState<TeamScore[]>([]);
   const [activeTeamName, setActiveTeamName] = useState<string>("");
   const [adminPin, setAdminPin] = useState<string | null>(null);
+  const [submissions, setSubmissions] = useState<Record<string, Record<string, GameSubmissionRecord>>>({});
   const [isClient, setIsClient] = useState(false);
 
   const loadState = useCallback(async () => {
@@ -32,6 +34,9 @@ export default function AdminRoutePage() {
       setTeams(backendData.teams);
       saveStoredTeams(backendData.teams);
       setActiveTeamName(backendData.activeTeam || "");
+      if (backendData.submissions) {
+        setSubmissions(backendData.submissions);
+      }
     }
   }, []);
 
@@ -49,6 +54,9 @@ export default function AdminRoutePage() {
             setActiveTeamName(backendData.activeTeam);
           } else {
             setActiveTeamName("");
+          }
+          if (backendData.submissions) {
+            setSubmissions(backendData.submissions);
           }
         }
       });
@@ -74,6 +82,7 @@ export default function AdminRoutePage() {
       teams={teams}
       activeTeamName={activeTeamName}
       adminPin={adminPin}
+      submissions={submissions}
       onAdminAuth={handleAdminAuth}
       onRefresh={loadState}
       onClose={handleClose}

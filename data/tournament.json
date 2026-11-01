@@ -1,27 +1,37 @@
 {
-  "activeTeam": "Hi",
+  "activeTeam": "bjmgj,b",
   "teams": [
     {
       "name": "Hi",
-      "greenerGrass": 0,
-      "realHeadline": 0,
+      "greenerGrass": 24,
+      "realHeadline": 20,
       "nameThatTune": 0,
       "categories": 0,
       "reverseMillionaire": 0,
       "offlineGame": 0,
-      "total": 0,
-      "lastUpdated": 1793214918086
+      "total": 44,
+      "lastUpdated": 1793309794751,
+      "playedGames": [
+        "greenerGrass",
+        "realHeadline"
+      ]
     },
     {
       "name": "Saumya",
-      "greenerGrass": 0,
-      "realHeadline": 0,
+      "greenerGrass": 36,
+      "realHeadline": 100,
       "nameThatTune": 0,
-      "categories": 90,
-      "reverseMillionaire": 0,
+      "categories": 100,
+      "reverseMillionaire": 100,
       "offlineGame": 0,
-      "total": 90,
-      "lastUpdated": 1793215141470
+      "total": 336,
+      "lastUpdated": 1793508707450,
+      "playedGames": [
+        "realHeadline",
+        "categories",
+        "reverseMillionaire",
+        "greenerGrass"
+      ]
     },
     {
       "name": "jn",
@@ -32,10 +42,424 @@
       "reverseMillionaire": 0,
       "offlineGame": 0,
       "total": 0,
-      "lastUpdated": 1793219189220
+      "lastUpdated": 1793219189220,
+      "playedGames": []
+    },
+    {
+      "name": "dskughfduo",
+      "greenerGrass": 20,
+      "realHeadline": 50,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 100,
+      "offlineGame": 0,
+      "total": 170,
+      "lastUpdated": 1793513194816,
+      "playedGames": [
+        "greenerGrass",
+        "realHeadline",
+        "reverseMillionaire",
+        "offlineGame"
+      ]
+    },
+    {
+      "name": "gfvjh",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1793489852540,
+      "playedGames": []
+    },
+    {
+      "name": "kj",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1793494219010,
+      "playedGames": []
+    },
+    {
+      "name": "gv hgv",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1793507722716,
+      "playedGames": []
+    },
+    {
+      "name": "Sammy",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1793507821832,
+      "playedGames": []
+    },
+    {
+      "name": "parul",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1793509340591,
+      "playedGames": []
+    },
+    {
+      "name": "jkldjvc",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 0,
+      "lastUpdated": 1793509643334,
+      "playedGames": []
+    },
+    {
+      "name": "testsquad",
+      "greenerGrass": 0,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 93,
+      "total": 93,
+      "lastUpdated": 1793513236594,
+      "playedGames": [
+        "offlineGame"
+      ]
+    },
+    {
+      "name": "bb",
+      "greenerGrass": 8,
+      "realHeadline": 0,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 8,
+      "lastUpdated": 1793513265448,
+      "playedGames": [
+        "offlineGame",
+        "greenerGrass"
+      ]
+    },
+    {
+      "name": "vv",
+      "greenerGrass": 0,
+      "realHeadline": 10,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 10,
+      "lastUpdated": 1793514866575,
+      "playedGames": [
+        "offlineGame",
+        "realHeadline"
+      ]
+    },
+    {
+      "name": "bjmgj,b",
+      "greenerGrass": 8,
+      "realHeadline": 90,
+      "nameThatTune": 0,
+      "categories": 0,
+      "reverseMillionaire": 0,
+      "offlineGame": 0,
+      "total": 98,
+      "lastUpdated": 1793517151946,
+      "playedGames": [
+        "greenerGrass",
+        "realHeadline",
+        "nameThatTune"
+      ]
     }
   ],
-  "version": 52,
-  "adminPin": "1234",
-  "lockedGames": []
+  "version": 235,
+  "adminPin": "pressplay",
+  "lockedGames": [],
+  "submissions": {
+    "testsquad": {
+      "nameThatTune": {
+        "submittedAt": 1793512196473,
+        "evaluatedAt": 1793512202606,
+        "evaluated": true,
+        "totalScore": 10,
+        "letter": "",
+        "items": [
+          {
+            "trackIdx": 0,
+            "songScore": 5,
+            "artistScore": 5
+          }
+        ]
+      },
+      "offlineGame": {
+        "submittedAt": 1793513223664,
+        "evaluatedAt": 1793513236594,
+        "evaluated": true,
+        "totalScore": 93,
+        "letter": "",
+        "items": [
+          {
+            "criteria": [
+              {
+                "id": "genre",
+                "title": "1. Genre",
+                "shortLabel": "Genre",
+                "selectedOption": "Horror"
+              },
+              {
+                "id": "rating",
+                "title": "2. IMDb / Goodreads Rating",
+                "shortLabel": "Rating",
+                "selectedOption": "IMDb 7–8 / Goodreads 3.5–4"
+              },
+              {
+                "id": "releaseYear",
+                "title": "3. Release / Publication Year",
+                "shortLabel": "Release Year",
+                "selectedOption": "2010–2019"
+              },
+              {
+                "id": "setting",
+                "title": "4. Setting",
+                "shortLabel": "Setting",
+                "selectedOption": "Small Town / Village"
+              },
+              {
+                "id": "origin",
+                "title": "5. Country of Origin",
+                "shortLabel": "Country",
+                "selectedOption": "USA / Canada / Mexico"
+              }
+            ],
+            "answers": [
+              "The Witch",
+              "Get Out",
+              "A Quiet Place"
+            ],
+            "answerNotes": [
+              "Small town colonial setting",
+              "Released in 2017 USA with 7.7 IMDb",
+              "Set in rural village 2018"
+            ],
+            "categoryName": "5 Simultaneous Spinners"
+          }
+        ]
+      }
+    },
+    "vv": {
+      "offlineGame": {
+        "submittedAt": 1793514393551,
+        "evaluated": false,
+        "totalScore": 0,
+        "letter": "",
+        "items": [
+          {
+            "criteria": [
+              {
+                "id": "genre",
+                "title": "1. Genre",
+                "shortLabel": "Genre",
+                "selectedOption": "Thriller / Mystery"
+              },
+              {
+                "id": "rating",
+                "title": "2. IMDb / Goodreads Rating",
+                "shortLabel": "Rating",
+                "selectedOption": "IMDb 8–9 / Goodreads 4–4.5"
+              },
+              {
+                "id": "releaseYear",
+                "title": "3. Release / Publication Year",
+                "shortLabel": "Release Year",
+                "selectedOption": "1990–1999"
+              },
+              {
+                "id": "setting",
+                "title": "4. Setting",
+                "shortLabel": "Setting",
+                "selectedOption": "Workplace"
+              },
+              {
+                "id": "origin",
+                "title": "5. Country of Origin",
+                "shortLabel": "Country",
+                "selectedOption": "South Korea / Japan / China"
+              }
+            ],
+            "answers": [
+              "",
+              "",
+              ""
+            ],
+            "answerNotes": [
+              "",
+              "",
+              ""
+            ],
+            "guesses": [
+              "",
+              "",
+              ""
+            ],
+            "categoryName": "5 Simultaneous Spinners",
+            "hint": "Genre: Thriller / Mystery • Rating: IMDb 8–9 / Goodreads 4–4.5 • Release Year: 1990–1999 • Setting: Workplace • Country: South Korea / Japan / China"
+          }
+        ]
+      }
+    },
+    "bjmgj,b": {
+      "nameThatTune": {
+        "submittedAt": 1793516360602,
+        "evaluatedAt": 1793517151946,
+        "evaluated": true,
+        "totalScore": 0,
+        "letter": "",
+        "items": [
+          {
+            "trackIdx": 0,
+            "lyric": "Today is gonna be the day that they're gonna throw it back to you, by now you should've somehow realized what you gotta do.",
+            "expectedSong": "Wonderwall",
+            "expectedArtist": "Oasis",
+            "genre": "Britpop",
+            "year": 1995,
+            "enteredSong": "hi",
+            "enteredArtist": "hi",
+            "songScore": 0,
+            "artistScore": 0
+          },
+          {
+            "trackIdx": 1,
+            "lyric": "I look around and Sin City's cold and empty, no one's around to judge me, I can't see clearly when you're gone.",
+            "expectedSong": "Blinding Lights",
+            "expectedArtist": "The Weeknd",
+            "genre": "Synthwave / Pop",
+            "year": 2020,
+            "enteredSong": "",
+            "enteredArtist": "",
+            "songScore": 0,
+            "artistScore": 0
+          },
+          {
+            "trackIdx": 2,
+            "lyric": "White shirt now red, my bloody nose, sleepin', you're on your tippy toes, creepin' around like no one knows.",
+            "expectedSong": "Bad Guy",
+            "expectedArtist": "Billie Eilish",
+            "genre": "Alt Pop",
+            "year": 2019,
+            "enteredSong": "",
+            "enteredArtist": "",
+            "songScore": 0,
+            "artistScore": 0
+          },
+          {
+            "trackIdx": 3,
+            "lyric": "She was more like a beauty queen from a movie scene, I said don't mind, but what do you mean I am the one.",
+            "expectedSong": "Billie Jean",
+            "expectedArtist": "Michael Jackson",
+            "genre": "Pop / Funk",
+            "year": 1982,
+            "enteredSong": "",
+            "enteredArtist": "",
+            "songScore": 0,
+            "artistScore": 0
+          },
+          {
+            "trackIdx": 4,
+            "lyric": "We're no strangers to love, you know the rules and so do I, a full commitment's what I'm thinking of.",
+            "expectedSong": "Never Gonna Give You Up",
+            "expectedArtist": "Rick Astley",
+            "genre": "Dance Pop",
+            "year": 1987,
+            "enteredSong": "",
+            "enteredArtist": "",
+            "songScore": 0,
+            "artistScore": 0
+          },
+          {
+            "trackIdx": 5,
+            "lyric": "His palms are sweaty, knees weak, arms are heavy, there's vomit on his sweater already, mom's spaghetti.",
+            "expectedSong": "Lose Yourself",
+            "expectedArtist": "Eminem",
+            "genre": "Hip-Hop",
+            "year": 2002,
+            "enteredSong": "",
+            "enteredArtist": "",
+            "songScore": 0,
+            "artistScore": 0
+          },
+          {
+            "trackIdx": 6,
+            "lyric": "There's a fire starting in my heart, reaching a fever pitch and it's bringing me out the dark.",
+            "expectedSong": "Rolling in the Deep",
+            "expectedArtist": "Adele",
+            "genre": "Soul / Pop",
+            "year": 2010,
+            "enteredSong": "",
+            "enteredArtist": "",
+            "songScore": 0,
+            "artistScore": 0
+          },
+          {
+            "trackIdx": 7,
+            "lyric": "She's got a smile that it seems to me reminds me of childhood memories, where everything was as fresh as the bright blue sky.",
+            "expectedSong": "Sweet Child O' Mine",
+            "expectedArtist": "Guns N' Roses",
+            "genre": "Hard Rock",
+            "year": 1987,
+            "enteredSong": "",
+            "enteredArtist": "",
+            "songScore": 0,
+            "artistScore": 0
+          },
+          {
+            "trackIdx": 8,
+            "lyric": "Lately, I've been, I've been losing sleep, dreaming about the things that we could be, but baby, I've been praying hard.",
+            "expectedSong": "Counting Stars",
+            "expectedArtist": "OneRepublic",
+            "genre": "Pop Rock",
+            "year": 2013,
+            "enteredSong": "",
+            "enteredArtist": "",
+            "songScore": 0,
+            "artistScore": 0
+          },
+          {
+            "trackIdx": 9,
+            "lyric": "I used to rule the world, seas would rise when I gave the word, now in the morning I sleep alone.",
+            "expectedSong": "Viva La Vida",
+            "expectedArtist": "Coldplay",
+            "genre": "Alt Rock",
+            "year": 2008,
+            "enteredSong": "",
+            "enteredArtist": "",
+            "songScore": 0,
+            "artistScore": 0
+          }
+        ]
+      }
+    }
+  }
 }

@@ -1,667 +1,683 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { sound } from "@/lib/audio";
-import { BULLSEYE_CATEGORIES_POOL, BullseyeCategory } from "@/data/bullseye";
-import { fetchGameContent } from "@/lib/gameContent";
+import { BULLSEYE_SPINNERS, SpinnerDefinition } from "@/data/bullseye";
 import confetti from "canvas-confetti";
+import "@/styles/offline.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBullseye,
-  faCrosshairs,
-  faTrophy,
-  faCheck,
   faRotate,
-  faClipboardCheck,
-  faFeatherPointed,
+  faCheck,
+  faPaperPlane,
+  faTrophy,
+  faArrowLeft,
+  faStar,
+  faDice,
+  faClock,
 } from "@fortawesome/free-solid-svg-icons";
+import { submitGameAnswers, BullseyeSubmissionItem, BullseyeCriteriaItem } from "@/lib/tournamentState";
 
 interface OfflineArenaProps {
   currentScore: number;
   activeTeamName: string;
   adminPin: string | null;
+  isDemo?: boolean;
   onFinish: (score: number) => void;
   onBack: () => void;
-  onUpdateMeta?: (meta: { title: string; score: number; roundInfo?: string }) => void;
+  onUpdateMeta?: (meta: {
+    title: string;
+    score: number;
+    roundInfo?: string;
+    timeLeft?: number;
+    totalTime?: number;
+    onEndGame?: () => void;
+  }) => void;
 }
 
-interface BoardData {
-  category: BullseyeCategory;
-  guesses: [string, string, string];
-  dartsLanded: Array<{ x: number; y: number; id: number }>;
-}
+// 6 Distinct Jewel Colors for the 6 Slices
+const SLICE_COLORS = [
+  "#f5af19", // Sultan Gold
+  "#8b5cf6", // Royal Violet
+  "#10b981", // Emerald Green
+  "#ec4899", // Ruby Rose
+  "#3b82f6", // Sapphire Blue
+  "#f97316", // Amber Sunset
+];
+
+// Short wedge labels for high-legibility rendering inside wheel slices
+const SHORT_SLICE_LABELS: Record<string, string[]> = {
+  genre: ["Romance", "Comedy", "Thriller", "Horror", "Fantasy", "Drama"],
+  rating: ["4–5", "5–6", "6–7", "7–8", "8–9", "9–10"],
+  releaseYear: ["< 1970", "1970–89", "1990–99", "2000–09", "2010–19", "2020–26"],
+  setting: ["School", "Work", "Village", "City", "History", "Fantasy"],
+  origin: ["IND/PK", "USA/MEX", "UK/AUS", "KR/JPN", "FRA/ESP", "GER/RUS"],
+};
 
 export default function OfflineArena({
   currentScore,
   activeTeamName,
   adminPin,
+  isDemo = false,
   onFinish,
   onBack,
   onUpdateMeta,
 }: OfflineArenaProps) {
-  const [categoriesPool, setCategoriesPool] = useState<BullseyeCategory[]>(BULLSEYE_CATEGORIES_POOL);
+  // 5 Spinners: Current landed option index (0 to 5) for each wheel
+  const [selectedIndices, setSelectedIndices] = useState<number[]>(() =>
+    BULLSEYE_SPINNERS.map((sp) => Math.floor(Math.random() * sp.options.length))
+  );
 
-  // 5 Active Target Boards
-  const [boards, setBoards] = useState<BoardData[]>(() => {
-    const chosen = [...BULLSEYE_CATEGORIES_POOL].sort(() => 0.5 - Math.random()).slice(0, 5);
-    return chosen.map((category) => ({
-      category,
-      guesses: ["", "", ""],
-      dartsLanded: [{ x: 50 + (Math.random() * 16 - 8), y: 50 + (Math.random() * 16 - 8), id: 1 }],
-    }));
-  });
+  // Rotation angles for each of the 5 wheels in degrees
+  const [rotations, setRotations] = useState<number[]>(() =>
+    BULLSEYE_SPINNERS.map((_, idx) => {
+      // Initialize rotation so that initial selectedIndex is aligned at 12 o'clock (270 deg)
+      const angleStep = 60;
+      const midAngle = 0 * angleStep + angleStep / 2;
+      return (270 - midAngle + 720) % 360;
+    })
+  );
 
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [hasSpun, setHasSpun] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  // 3 Answer Input Boxes + Optional Notes
+  const [answers, setAnswers] = useState<[string, string, string]>(["", "", ""]);
+  const [notes, setNotes] = useState<[string, string, string]>(["", "", ""]);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [validationError, setValidationError] = useState("");
+
+  const spinTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const answersRef = useRef(answers);
+  const notesRef = useRef(notes);
+  const selectedIndicesRef = useRef(selectedIndices);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { notesRef.current = notes; }, [notes]);
+  useEffect(() => { selectedIndicesRef.current = selectedIndices; }, [selectedIndices]);
+
+  // Clean up timers on unmount and scroll to top
   useEffect(() => {
-    fetchGameContent().then((content) => {
-      if (content?.bullseye && content.bullseye.length > 0) {
-        setCategoriesPool(content.bullseye);
-        const chosen = [...content.bullseye].sort(() => 0.5 - Math.random()).slice(0, 5);
-        setBoards(
-          chosen.map((category) => ({
-            category,
-            guesses: ["", "", ""],
-            dartsLanded: [{ x: 50 + (Math.random() * 16 - 8), y: 50 + (Math.random() * 16 - 8), id: 1 }],
-          }))
-        );
-      }
-    });
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+    return () => {
+      if (spinTimeoutRef.current) clearTimeout(spinTimeoutRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
-  const [activeBoardIdx, setActiveBoardIdx] = useState(0);
-  const [isThrowing, setIsThrowing] = useState(false);
-  const [throwProjectile, setThrowProjectile] = useState<{ active: boolean; targetX: number; targetY: number }>({
-    active: false,
-    targetX: 50,
-    targetY: 50,
+  const handleSubmit = useCallback(async (isForced = false) => {
+    if (isSubmitted) return;
+
+    const currentAnswers = answersRef.current;
+    const currentNotes = notesRef.current;
+    const currentSelected = selectedIndicesRef.current;
+
+    const hasAnyAnswer = currentAnswers.some((a) => a.trim().length > 0);
+    if (!isForced && !hasAnyAnswer) {
+      sound.playBuzzer();
+      setValidationError("Please enter at least 1 answer before submitting for evaluation!");
+      return;
+    }
+
+    if (timerRef.current) clearInterval(timerRef.current);
+    sound.playSuccess();
+    confetti({ particleCount: 90, spread: 75 });
+    setIsSubmitted(true);
+    setTimeLeft(null);
+
+    const criteriaPayload: BullseyeCriteriaItem[] = BULLSEYE_SPINNERS.map((sp, idx) => ({
+      id: sp.id,
+      title: sp.title,
+      shortLabel: sp.shortLabel,
+      selectedOption: sp.options[currentSelected[idx]],
+    }));
+
+    const submissionPayload: BullseyeSubmissionItem = {
+      criteria: criteriaPayload,
+      answers: currentAnswers,
+      answerNotes: currentNotes,
+      guesses: currentAnswers,
+      categoryName: "5 Simultaneous Spinners",
+      hint: criteriaPayload.map((c) => `${c.shortLabel}: ${c.selectedOption}`).join(" • "),
+    };
+
+    if (!isDemo && activeTeamName) {
+      await submitGameAnswers(activeTeamName, "offlineGame", { items: [submissionPayload] });
+    }
+  }, [isSubmitted, activeTeamName, isDemo]);
+
+  // Simultaneous 5-Wheel Spin Handler
+  const handleSpinAll = useCallback(() => {
+    if (isSpinning || isSubmitted) return;
+
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimeLeft(null);
+
+    sound.playClick(750);
+    setIsSpinning(true);
+    setValidationError("");
+    setHasSpun(false);
+
+    // Pick 5 random target indices (one for each wheel)
+    const targetIndices = BULLSEYE_SPINNERS.map((sp) =>
+      Math.floor(Math.random() * sp.options.length)
+    );
+
+    const angleStep = 60; // 360 / 6 options
+    const nextRotations = targetIndices.map((targetIdx, wheelIdx) => {
+      const currentRotation = rotations[wheelIdx];
+      // Pointer is at 12 o'clock (270 degrees in SVG coordinate space)
+      const sliceCenterAngle = targetIdx * angleStep + angleStep / 2;
+      const currentMod = ((currentRotation % 360) + 360) % 360;
+      const delta = (270 - sliceCenterAngle - currentMod + 720) % 360;
+
+      // 5 to 7 full dramatic revolutions per wheel
+      const extraRevolutions = 360 * (5 + wheelIdx * 0.4);
+      return currentRotation + extraRevolutions + delta;
+    });
+
+    setRotations(nextRotations);
+
+    // Decelerating tactile clicking sounds
+    const spinDuration = 3800;
+    let elapsed = 0;
+    const tickStep = () => {
+      const progress = elapsed / spinDuration;
+      const interval = 60 + Math.pow(progress, 2.5) * 380;
+      sound.playWheelTick();
+      elapsed += interval;
+      if (elapsed < spinDuration - 120) {
+        setTimeout(tickStep, interval);
+      }
+    };
+    tickStep();
+
+    // Wheel stop resolution - topics are assigned now, giving 2 minutes (120s)!
+    spinTimeoutRef.current = setTimeout(() => {
+      setSelectedIndices(targetIndices);
+      setIsSpinning(false);
+      setHasSpun(true);
+      setTimeLeft(120); // 2 minutes starts once topics are assigned
+      sound.playSuccess();
+      confetti({
+        particleCount: 80,
+        spread: 80,
+        origin: { y: 0.5 },
+      });
+    }, spinDuration);
+  }, [isSpinning, isSubmitted, rotations]);
+
+  // 2-minute countdown interval once topics are assigned
+  useEffect(() => {
+    if (!hasSpun || isSubmitted || isSpinning || timeLeft === null) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+
+    if (timeLeft <= 0) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      // Auto-submit when time expires!
+      handleSubmit(true);
+      return;
+    }
+
+    if (timeLeft <= 5) {
+      sound.playCountdownBeep(timeLeft === 1);
+    }
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((t) => (t !== null && t > 0 ? t - 1 : 0));
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [hasSpun, isSubmitted, isSpinning, timeLeft, handleSubmit]);
+
+  const handleAnswerChange = (idx: 0 | 1 | 2, val: string) => {
+    setAnswers((prev) => {
+      const next: [string, string, string] = [...prev];
+      next[idx] = val;
+      return next;
+    });
+    if (validationError) setValidationError("");
+  };
+
+  const handleNoteChange = (idx: 0 | 1 | 2, val: string) => {
+    setNotes((prev) => {
+      const next: [string, string, string] = [...prev];
+      next[idx] = val;
+      return next;
+    });
+  };
+
+  const onUpdateMetaRef = useRef(onUpdateMeta);
+  useEffect(() => {
+    onUpdateMetaRef.current = onUpdateMeta;
   });
 
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  // Shuffle categories
-  const handleReshuffleCategories = () => {
-    sound.playClick();
-    const chosen = [...categoriesPool].sort(() => 0.5 - Math.random()).slice(0, 5);
-    setBoards(
-      chosen.map((category) => ({
-        category,
-        guesses: ["", "", ""],
-        dartsLanded: [{ x: 50 + (Math.random() * 16 - 8), y: 50 + (Math.random() * 16 - 8), id: 1 }],
-      }))
-    );
-    setActiveBoardIdx(0);
-  };
-
-  // Dart throw simulation
-  const handleThrowDart = (boardIdx: number) => {
-    if (isThrowing) return;
-    setIsThrowing(true);
-    sound.playDartThrow();
-
-    const angle = Math.random() * Math.PI * 2;
-    const distance = Math.pow(Math.random(), 1.5) * 35;
-    const hitX = Math.round(50 + Math.cos(angle) * distance);
-    const hitY = Math.round(50 + Math.sin(angle) * distance);
-
-    setThrowProjectile({ active: true, targetX: hitX, targetY: hitY });
-
-    setTimeout(() => {
-      sound.playDartHit();
-      setBoards((prev) => {
-        const copy = [...prev];
-        const curBoard = { ...copy[boardIdx] };
-        curBoard.dartsLanded = [...curBoard.dartsLanded, { x: hitX, y: hitY, id: Date.now() }].slice(-5);
-        copy[boardIdx] = curBoard;
-        return copy;
-      });
-      setThrowProjectile({ active: false, targetX: hitX, targetY: hitY });
-      setIsThrowing(false);
-    }, 450);
-  };
-
-  // Direct click on target
-  const handleTargetClick = (e: React.MouseEvent<HTMLDivElement>, boardIdx: number) => {
-    if (isThrowing) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = Math.round(((e.clientX - rect.left) / rect.width) * 100);
-    const clickY = Math.round(((e.clientY - rect.top) / rect.height) * 100);
-
-    setIsThrowing(true);
-    sound.playDartThrow();
-    setThrowProjectile({ active: true, targetX: clickX, targetY: clickY });
-
-    setTimeout(() => {
-      sound.playDartHit();
-      setBoards((prev) => {
-        const copy = [...prev];
-        const curBoard = { ...copy[boardIdx] };
-        curBoard.dartsLanded = [...curBoard.dartsLanded, { x: clickX, y: clickY, id: Date.now() }].slice(-5);
-        copy[boardIdx] = curBoard;
-        return copy;
-      });
-      setThrowProjectile({ active: false, targetX: clickX, targetY: clickY });
-      setIsThrowing(false);
-    }, 400);
-  };
-
-  // Guess input change
-  const handleGuessChange = (boardIdx: number, guessIdx: number, val: string) => {
-    setBoards((prev) => {
-      const copy = [...prev];
-      const cur = { ...copy[boardIdx] };
-      const g = [...cur.guesses] as [string, string, string];
-      g[guessIdx] = val;
-      cur.guesses = g;
-      copy[boardIdx] = cur;
-      return copy;
-    });
-  };
-
-  const handleSubmitAllBoards = () => {
-    sound.playSuccess();
-    confetti({ particleCount: 80, spread: 70 });
-    setIsSubmitted(true);
-  };
-
-  const handleReturnToHub = () => {
-    sound.playClick();
-    onBack();
-  };
-
   useEffect(() => {
-    onUpdateMeta?.({
-      title: "Bullseye Stage",
+    const formattedTimer = timeLeft !== null
+      ? `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, "0")}`
+      : "2:00";
+    onUpdateMetaRef.current?.({
+      title: "Bullseye Spinners",
       score: currentScore,
-      roundInfo: !isSubmitted ? `Board ${activeBoardIdx + 1}/5` : `Boards Submitted to Host`,
+      roundInfo: !hasSpun
+        ? "Spin 5 Wheels to Begin"
+        : !isSubmitted
+        ? `2 Min Timer • ${formattedTimer} Left`
+        : "Answers Submitted",
+      timeLeft: hasSpun && !isSubmitted && !isSpinning && timeLeft !== null ? timeLeft : undefined,
+      totalTime: 120,
+      onEndGame: !isSubmitted && hasSpun ? () => handleSubmit(true) : undefined,
     });
-  }, [isSubmitted, activeBoardIdx, currentScore, onUpdateMeta]);
+  }, [isSubmitted, currentScore, hasSpun, isSpinning, timeLeft, handleSubmit]);
 
-  const activeBoard = boards[activeBoardIdx];
+  const landedCriteria = BULLSEYE_SPINNERS.map((sp, idx) => ({
+    label: sp.shortLabel,
+    value: sp.options[selectedIndices[idx]],
+  }));
+
+  // SVG dimensions for each circular spinner wheel
+  const wheelSize = 200;
+  const cx = wheelSize / 2;
+  const cy = wheelSize / 2;
+  const radius = wheelSize / 2 - 10;
+  const angleStep = 360 / 6; // 60 degrees
 
   return (
     <div className="game-arena">
-      <div className="game-body-center offline-stage" style={{ maxWidth: "1150px" }}>
-        {/* Top Control Header */}
-        <div
-          style={{
-            width: "100%",
-            background: "var(--paper)",
-            border: "3px solid var(--gold-border, var(--ink))",
-            boxShadow: "6px 6px 0 var(--ink)",
-            borderRadius: "var(--radius-lg)",
-            padding: "1.2rem 1.8rem",
-            marginBottom: "1.5rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexWrap: "wrap",
-            gap: "1rem",
-          }}
-        >
-          <div>
-            <span
-              style={{
-                display: "inline-block",
-                padding: "0.25rem 0.75rem",
-                borderRadius: "9999px",
-                background: "var(--c-cherry)",
-                color: "#fff",
-                fontFamily: "var(--font-mono)",
-                fontWeight: 900,
-                fontSize: "0.8rem",
-                marginBottom: "0.4rem",
-                border: "2px solid var(--ink)",
-              }}
-            >
-              LIVE PHYSICAL EVENT SHOWDOWN
+      <div className="bullseye-arena-wrap">
+        {/* Top Hero Banner */}
+        <div className="bullseye-hero-card">
+          <div className="bullseye-hero-title-group">
+            <span className="bullseye-hero-tag">
+              <FontAwesomeIcon icon={faDice} />
+              5 SIMULTANEOUS WHEEL SPINNERS
             </span>
-            <h2 style={{ fontSize: "1.6rem", fontWeight: 900, color: "var(--ink)" }}>
-              <FontAwesomeIcon icon={faBullseye} style={{ marginRight: "0.5rem", color: "var(--c-cherry)" }} />
-              Bullseye: Darts & Archery Arena
+            <h2>
+              <FontAwesomeIcon icon={faBullseye} style={{ color: "var(--c-sun)" }} />
+              Bullseye: 5 Criteria Spinners
             </h2>
-            <p style={{ color: "var(--muted-paper)", fontSize: "0.9rem", fontWeight: 600 }}>
-              Team: <strong style={{ color: "var(--ink)" }}>{activeTeamName}</strong> • Throw darts at 5 target boards & submit 3 guesses per category!
+            <p className="bullseye-hero-sub">
+              Active Team: <strong style={{ color: "var(--ink)" }}>{activeTeamName || "Current Team"}</strong> • Spin all 5 wheels simultaneously, then enter 3 answers matching as many criteria as possible!
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: "0.8rem", alignItems: "center", flexWrap: "wrap" }}>
-            {!isSubmitted && (
-              <button type="button" className="btn-secondary-sm" onClick={handleReshuffleCategories}>
-                <FontAwesomeIcon icon={faRotate} style={{ marginRight: "0.4rem" }} />
-                Re-roll Categories
+          {!isSubmitted && (
+            <button
+              type="button"
+              className="btn-spin-all"
+              onClick={handleSpinAll}
+              disabled={isSpinning}
+            >
+              <FontAwesomeIcon icon={faRotate} spin={isSpinning} />
+              {isSpinning ? "SPINNING ALL 5 WHEELS..." : "SPIN ALL 5 WHEELS"}
+            </button>
+          )}
+        </div>
+
+        {/* 5 CIRCULAR WHEELS MACHINE */}
+        <div className="spinners-machine-card">
+          <div className="spinners-machine-header">
+            <div className="spinners-machine-badge">
+              <FontAwesomeIcon icon={faStar} style={{ color: "var(--gold-primary)" }} />
+              CIRCULAR WHEEL SPINNERS (SIMULTANEOUS ROTATION)
+            </div>
+            <div style={{ color: "var(--muted-stage)", fontSize: "0.82rem", fontFamily: "var(--font-mono)" }}>
+              {isSpinning ? "Wheels spinning at high speed..." : "5 Criteria Locked"}
+            </div>
+          </div>
+
+          <div className="spinners-wheels-grid">
+            {BULLSEYE_SPINNERS.map((spinner, wheelIdx) => {
+              const currentLandedOpt = spinner.options[selectedIndices[wheelIdx]];
+              const shortLabels = SHORT_SLICE_LABELS[spinner.id] || spinner.options;
+              const currentRot = rotations[wheelIdx];
+
+              return (
+                <div
+                  key={spinner.id}
+                  className={`wheel-card ${isSpinning ? "is-spinning" : ""}`}
+                >
+                  <div className="wheel-card-head">
+                    <span>#{wheelIdx + 1}</span>
+                    <span>{spinner.shortLabel}</span>
+                  </div>
+
+                  {/* Circular Wheel Stage with Top Needle Pointer */}
+                  <div className="wheel-stage">
+                    <div className="wheel-pointer" />
+
+                    <div
+                      className="wheel-rotor"
+                      style={{
+                        transform: `rotate(${currentRot}deg)`,
+                        transition: isSpinning
+                          ? "transform 3.8s cubic-bezier(0.12, 0.8, 0.18, 1)"
+                          : "none",
+                      }}
+                    >
+                      <svg viewBox={`0 0 ${wheelSize} ${wheelSize}`}>
+                        {/* Outer Metallic Rim */}
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={radius + 8}
+                          fill="#1d0a3d"
+                          stroke="#0d041c"
+                          strokeWidth="5"
+                        />
+
+                        {/* 6 Pie Slices */}
+                        {spinner.options.map((_, sliceIdx) => {
+                          const startAngle = sliceIdx * angleStep;
+                          const endAngle = (sliceIdx + 1) * angleStep;
+                          const startRad = (startAngle * Math.PI) / 180;
+                          const endRad = (endAngle * Math.PI) / 180;
+
+                          const x1 = cx + radius * Math.cos(startRad);
+                          const y1 = cy + radius * Math.sin(startRad);
+                          const x2 = cx + radius * Math.cos(endRad);
+                          const y2 = cy + radius * Math.sin(endRad);
+
+                          const pathData = `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 0 1 ${x2} ${y2} Z`;
+
+                          // Text angle and placement along wedge
+                          const midAngle = startAngle + angleStep / 2;
+                          const midRad = (midAngle * Math.PI) / 180;
+                          const textR = radius * 0.65;
+                          const tx = cx + textR * Math.cos(midRad);
+                          const ty = cy + textR * Math.sin(midRad);
+
+                          const sliceColor = SLICE_COLORS[sliceIdx % SLICE_COLORS.length];
+                          const labelText = shortLabels[sliceIdx] || `${sliceIdx + 1}`;
+
+                          return (
+                            <g key={sliceIdx}>
+                              <path
+                                d={pathData}
+                                fill={sliceColor}
+                                stroke="#0d041c"
+                                strokeWidth="2.5"
+                              />
+                              <text
+                                x={tx}
+                                y={ty}
+                                fill="#ffffff"
+                                stroke="#0d041c"
+                                strokeWidth="0.8"
+                                fontSize="12"
+                                fontWeight="900"
+                                fontFamily="var(--font-mono), system-ui, sans-serif"
+                                textAnchor="middle"
+                                dominantBaseline="central"
+                                transform={`rotate(${midAngle + 90}, ${tx}, ${ty})`}
+                              >
+                                {labelText}
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* Outer Rim Studs / Rivets */}
+                        {[0, 60, 120, 180, 240, 300].map((deg) => {
+                          const rad = (deg * Math.PI) / 180;
+                          const rx = cx + (radius + 4) * Math.cos(rad);
+                          const ry = cy + (radius + 4) * Math.sin(rad);
+                          return (
+                            <circle
+                              key={deg}
+                              cx={rx}
+                              cy={ry}
+                              r="2.5"
+                              fill="#ffd700"
+                              stroke="#0d041c"
+                              strokeWidth="1"
+                            />
+                          );
+                        })}
+
+                        {/* Center Golden Medallion Hub */}
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r="18"
+                          fill="url(#goldSheen)"
+                          stroke="#0d041c"
+                          strokeWidth="3"
+                        />
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r="14"
+                          fill="#f5af19"
+                        />
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r="6"
+                          fill="#ffd700"
+                          stroke="#0d041c"
+                          strokeWidth="1.5"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Landed Option Badge Under Wheel */}
+                  <div className="wheel-landed-badge">
+                    {isSpinning ? "Spinning…" : currentLandedOpt}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Quick Respin / Status Bar */}
+          {!isSubmitted && (
+            <div className="spin-controls-bar">
+              <button
+                type="button"
+                className="btn-spin-all"
+                onClick={handleSpinAll}
+                disabled={isSpinning}
+                style={{ fontSize: "1.1rem", padding: "0.9rem 2rem" }}
+              >
+                <FontAwesomeIcon icon={faRotate} spin={isSpinning} />
+                {isSpinning ? "SPINNING ALL 5 WHEELS..." : "RE-SPIN ALL 5 WHEELS"}
               </button>
-            )}
+            </div>
+          )}
+        </div>
+
+        {/* CRITERIA SUMMARY BANNER */}
+        <div className="criteria-summary-banner">
+          <div className="criteria-banner-title">
+            CURRENT 5 LANDED CRITERIA:
+          </div>
+          <div className="criteria-chips-row">
+            {landedCriteria.map((c, idx) => (
+              <span key={idx} className="criteria-pill">
+                <span className="criteria-pill-label">{c.label}:</span>
+                <span>{c.value}</span>
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* ACTIVE PLAYING MODE: 5 TARGET BOARDS */}
+        {/* 3 ANSWERS SUBMISSION SECTION */}
         {!isSubmitted ? (
-          <div style={{ width: "100%" }}>
-            {/* Board Selector Tabs */}
-            <div
-              style={{
-                display: "flex",
-                gap: "0.6rem",
-                marginBottom: "1.5rem",
-                overflowX: "auto",
-                paddingBottom: "0.3rem",
-              }}
-            >
-              {boards.map((b, idx) => {
-                const isCurrent = idx === activeBoardIdx;
-                const guessesFilled = b.guesses.filter((g) => g.trim().length > 0).length;
-
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      sound.playClick();
-                      setActiveBoardIdx(idx);
-                    }}
+          <div className="answers-section-card">
+            <div className="answers-section-header">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                <div>
+                  <h3>ENTER YOUR 3 ANSWERS</h3>
+                  <p>
+                    Enter 3 answers that satisfy as many of the 5 criteria above as possible. Judges will score based on how many criteria each answer satisfies (up to 100 PTS total).
+                  </p>
+                </div>
+                {hasSpun && !isSubmitted && timeLeft !== null && (
+                  <div
                     style={{
-                      flex: "1 1 180px",
-                      padding: "0.85rem 1rem",
-                      borderRadius: "12px",
-                      border: "3px solid var(--ink)",
-                      background: isCurrent ? "var(--c-cherry)" : "var(--paper)",
-                      color: isCurrent ? "#fff" : "var(--ink)",
-                      boxShadow: isCurrent ? "4px 4px 0 var(--ink)" : "2px 2px 0 var(--ink)",
-                      cursor: "pointer",
-                      textAlign: "left",
-                      transition: "transform 0.1s ease",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "0.6rem",
+                      padding: "0.6rem 1.4rem",
+                      borderRadius: "14px",
+                      background: timeLeft <= 15 ? "rgba(239, 68, 68, 0.2)" : "rgba(245, 175, 25, 0.15)",
+                      border: timeLeft <= 15 ? "2.5px solid #ef4444" : "2.5px solid var(--gold-primary, #f5af19)",
+                      color: timeLeft <= 15 ? "#ef4444" : "var(--gold-primary, #f5af19)",
+                      fontWeight: 900,
+                      fontSize: "1.3rem",
+                      fontFamily: "var(--font-mono, monospace)",
                     }}
                   >
-                    <div style={{ fontSize: "0.75rem", fontFamily: "var(--font-mono)", fontWeight: 900 }}>
-                      BOARD #{idx + 1}
+                    <FontAwesomeIcon icon={faClock} spin={timeLeft <= 15} />
+                    <span>{Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, "0")} LEFT</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {validationError && (
+              <div
+                style={{
+                  padding: "0.75rem 1.2rem",
+                  background: "#fee2e2",
+                  color: "#991b1b",
+                  border: "2px solid #ef4444",
+                  borderRadius: "10px",
+                  fontWeight: 800,
+                  fontSize: "0.9rem",
+                }}
+              >
+                {validationError}
+              </div>
+            )}
+
+            <div className="answer-cards-grid">
+              {[0, 1, 2].map((idx) => {
+                const num = idx + 1;
+                return (
+                  <div key={idx} className="answer-card">
+                    <div className="answer-card-header">
+                      <span className="answer-card-badge">ANSWER #{num}</span>
+                      <span className="answer-card-hint">
+                        Matches: {landedCriteria.map((c) => c.label).join(", ")}
+                      </span>
                     </div>
-                    <div style={{ fontSize: "0.95rem", fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {b.category.name}
-                    </div>
-                    <div style={{ fontSize: "0.75rem", marginTop: "0.2rem", opacity: 0.9 }}>
-                      {guessesFilled}/3 Guesses • {b.dartsLanded.length} Darts
-                    </div>
-                  </button>
+
+                    <input
+                      type="text"
+                      className="answer-input-title"
+                      placeholder={`Answer #${num}`}
+                      value={answers[idx as 0 | 1 | 2]}
+                      onChange={(e) => handleAnswerChange(idx as 0 | 1 | 2, e.target.value)}
+                    />
+
+                    <textarea
+                      className="answer-input-notes"
+                      rows={1}
+                      placeholder={`Optional note for Answer #${num}...`}
+                      value={notes[idx as 0 | 1 | 2]}
+                      onChange={(e) => handleNoteChange(idx as 0 | 1 | 2, e.target.value)}
+                    />
+                  </div>
                 );
               })}
             </div>
 
-            {/* Main Stage Grid: Interactive Target + Category Guesses */}
-            {activeBoard && (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-                {/* Left: Interactive Target Face with Darts */}
-                <div
-                  style={{
-                    background: "var(--paper)",
-                    border: "4px solid var(--ink)",
-                    boxShadow: "6px 6px 0 var(--ink)",
-                    borderRadius: "var(--radius-lg)",
-                    padding: "1.5rem",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                  }}
-                >
-                  <div style={{ width: "100%", display: "flex", justifyContent: "space-between", marginBottom: "0.8rem" }}>
-                    <span style={{ fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.85rem", color: "var(--muted-paper)" }}>
-                      🎯 PHYSICAL TARGET SIMULATOR
-                    </span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontWeight: 900, fontSize: "0.85rem", color: "var(--c-cherry)" }}>
-                      {activeBoard.dartsLanded.length} PROJECTILES ON BOARD
-                    </span>
-                  </div>
-
-                  {/* SVG Bullseye Board */}
-                  <div
-                    onClick={(e) => handleTargetClick(e, activeBoardIdx)}
-                    style={{
-                      position: "relative",
-                      width: "100%",
-                      maxWidth: "340px",
-                      aspectRatio: "1/1",
-                      borderRadius: "50%",
-                      border: "5px solid var(--ink)",
-                      boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
-                      background: "#111",
-                      cursor: "crosshair",
-                      overflow: "hidden",
-                      margin: "0.5rem 0 1.2rem 0",
-                    }}
-                  >
-                    <svg viewBox="0 0 100 100" style={{ width: "100%", height: "100%", display: "block" }}>
-                      {/* Outer Ring 1 */}
-                      <circle cx="50" cy="50" r="48" fill="#ffffff" stroke="#111" strokeWidth="1.5" />
-                      {/* Outer Ring 2 */}
-                      <circle cx="50" cy="50" r="38" fill="#111111" stroke="#fff" strokeWidth="1" />
-                      {/* Mid Ring 1 */}
-                      <circle cx="50" cy="50" r="28" fill="#38a3a5" stroke="#111" strokeWidth="1" />
-                      {/* Mid Ring 2 */}
-                      <circle cx="50" cy="50" r="18" fill="#e63946" stroke="#111" strokeWidth="1" />
-                      {/* Inner Bullseye */}
-                      <circle cx="50" cy="50" r="8" fill="#ffd166" stroke="#111" strokeWidth="1" />
-                      <circle cx="50" cy="50" r="3" fill="#e63946" />
-
-                      {/* Crosshairs */}
-                      <line x1="50" y1="0" x2="50" y2="100" stroke="rgba(0,0,0,0.2)" strokeWidth="0.5" strokeDasharray="2,2" />
-                      <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(0,0,0,0.2)" strokeWidth="0.5" strokeDasharray="2,2" />
-                    </svg>
-
-                    {/* Render Landed Darts */}
-                    {activeBoard.dartsLanded.map((dart) => (
-                      <div
-                        key={dart.id}
-                        style={{
-                          position: "absolute",
-                          left: `${dart.x}%`,
-                          top: `${dart.y}%`,
-                          transform: "translate(-50%, -50%)",
-                          pointerEvents: "none",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: "10px",
-                            height: "10px",
-                            borderRadius: "50%",
-                            background: "#ff0044",
-                            border: "2px solid #fff",
-                            boxShadow: "0 0 8px #ff0044",
-                          }}
-                        />
-                        <div
-                          style={{
-                            position: "absolute",
-                            bottom: "6px",
-                            left: "6px",
-                            transform: "rotate(-35deg)",
-                            fontSize: "1.2rem",
-                            color: "#fff",
-                            filter: "drop-shadow(2px 2px 2px #000)",
-                          }}
-                        >
-                          <FontAwesomeIcon icon={faFeatherPointed} />
-                        </div>
-                      </div>
-                    ))}
-
-                    {/* Flying projectile animation */}
-                    {throwProjectile.active && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          left: `${throwProjectile.targetX}%`,
-                          top: `${throwProjectile.targetY}%`,
-                          transform: "translate(-50%, -50%) scale(1.6)",
-                          transition: "all 0.4s cubic-bezier(0.1, 0.9, 0.2, 1)",
-                          fontSize: "1.8rem",
-                          color: "#ffc93c",
-                          pointerEvents: "none",
-                          filter: "drop-shadow(0 0 10px #ffc93c)",
-                        }}
-                      >
-                        🎯
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    className="btn-action btn-red"
-                    onClick={() => handleThrowDart(activeBoardIdx)}
-                    disabled={isThrowing}
-                    style={{ width: "100%", padding: "0.9rem", fontSize: "1.05rem" }}
-                  >
-                    <FontAwesomeIcon icon={faBullseye} style={{ marginRight: "0.5rem" }} />
-                    {isThrowing ? "THROWING PROJECTILE..." : "THROW DART / SHOOT ARROW"}
-                  </button>
-                  <span style={{ display: "block", fontSize: "0.75rem", color: "var(--muted-paper)", marginTop: "0.5rem" }}>
-                    (Or click directly on the target face above!)
-                  </span>
-                </div>
-
-                {/* Right: Board Category & 3 Guesses Inputs */}
-                <div
-                  style={{
-                    background: "var(--paper)",
-                    border: "4px solid var(--ink)",
-                    boxShadow: "6px 6px 0 var(--ink)",
-                    borderRadius: "var(--radius-lg)",
-                    padding: "1.8rem",
-                  }}
-                >
-                  <div style={{ marginBottom: "1.2rem" }}>
-                    <span
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        fontWeight: 900,
-                        fontSize: "0.8rem",
-                        color: "var(--c-cherry)",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      BOARD #{activeBoardIdx + 1} CATEGORY
-                    </span>
-                    <h3 style={{ fontSize: "1.5rem", fontWeight: 900, color: "var(--ink)", marginTop: "0.2rem" }}>
-                      {activeBoard.category.name}
-                    </h3>
-                    <p style={{ color: "var(--muted-paper)", fontSize: "0.88rem", fontWeight: 600 }}>
-                      Category Context: {activeBoard.category.hint}
-                    </p>
-                  </div>
-
-                  {/* 3 Guesses */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: "1rem", marginBottom: "1.5rem" }}>
-                    {[0, 1, 2].map((gIdx) => (
-                      <div key={gIdx}>
-                        <label
-                          style={{
-                            display: "block",
-                            fontWeight: 800,
-                            fontSize: "0.88rem",
-                            color: "var(--ink)",
-                            marginBottom: "0.35rem",
-                          }}
-                        >
-                          🎯 Guess #{gIdx + 1} for this Category:
-                        </label>
-                        <input
-                          type="text"
-                          placeholder={`Enter guess #${gIdx + 1}...`}
-                          value={activeBoard.guesses[gIdx]}
-                          onChange={(e) => handleGuessChange(activeBoardIdx, gIdx, e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "0.85rem 1rem",
-                            borderRadius: "10px",
-                            border: "2px solid var(--ink)",
-                            background: "#f8fafc",
-                            color: "var(--ink)",
-                            fontFamily: "var(--font-mono)",
-                            fontSize: "1.05rem",
-                            fontWeight: 700,
-                            outline: "none",
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  <div style={{ display: "flex", gap: "0.8rem", justifyContent: "space-between" }}>
-                    <button
-                      type="button"
-                      className="btn-secondary-sm"
-                      onClick={() => setActiveBoardIdx((prev) => (prev > 0 ? prev - 1 : 4))}
-                    >
-                      ← Previous Board
-                    </button>
-
-                    {activeBoardIdx < 4 ? (
-                      <button
-                        type="button"
-                        className="btn-action btn-gold"
-                        onClick={() => setActiveBoardIdx((prev) => prev + 1)}
-                      >
-                        Next Board →
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn-action btn-gold"
-                        onClick={handleSubmitAllBoards}
-                      >
-                        SUBMIT ALL TARGET BOARDS
-                        <FontAwesomeIcon icon={faTrophy} style={{ marginLeft: "0.5rem" }} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* ========================================================================= */
-          /* SUBMITTED CONFIRMATION SCREEN (HOST EVALUATES IN REAL-TIME FROM ADMIN PANEL) */
-          /* ========================================================================= */
-          <div style={{ width: "100%", maxWidth: "900px", margin: "0 auto" }}>
-            <div
-              style={{
-                background: "var(--paper)",
-                border: "3px solid var(--gold-border, var(--ink))",
-                boxShadow: "6px 6px 0 var(--ink)",
-                borderRadius: "var(--radius-lg)",
-                padding: "1.6rem",
-                marginBottom: "1.5rem",
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "1rem",
-              }}
-            >
-              <div>
-                <span
-                  style={{
-                    display: "inline-block",
-                    padding: "0.25rem 0.75rem",
-                    borderRadius: "9999px",
-                    background: "var(--c-gold, #f5af19)",
-                    color: "var(--ink)",
-                    fontFamily: "var(--font-mono)",
-                    fontWeight: 900,
-                    fontSize: "0.8rem",
-                    marginBottom: "0.4rem",
-                    border: "2px solid var(--ink)",
-                  }}
-                >
-                  TARGET ARENA SUBMISSION
-                </span>
-                <h2 style={{ fontSize: "1.6rem", fontWeight: 900, color: "var(--ink)" }}>
-                  <FontAwesomeIcon icon={faClipboardCheck} style={{ marginRight: "0.5rem", color: "var(--c-cherry)" }} />
-                  Target Boards & Guesses Submitted!
-                </h2>
-                <p style={{ color: "var(--muted-paper)", fontSize: "0.9rem", fontWeight: 600 }}>
-                  All 5 boards have been logged for team <strong style={{ color: "var(--ink)" }}>{activeTeamName}</strong>. Official scoring will be completed in real time by the EPC Host via the Admin Panel.
-                </p>
-              </div>
-
-              <div
-                style={{
-                  padding: "0.85rem 1.6rem",
-                  borderRadius: "16px",
-                  background: "var(--stage)",
-                  color: "#fff",
-                  border: "3px solid var(--ink)",
-                  boxShadow: "4px 4px 0 var(--ink)",
-                  textAlign: "center",
-                }}
+            <div className="bullseye-submit-bar">
+              <button
+                type="button"
+                className="btn-secondary-sm"
+                onClick={onBack}
+                style={{ padding: "0.8rem 1.4rem", fontSize: "0.95rem" }}
               >
-                <span style={{ fontSize: "0.75rem", fontWeight: 800, color: "var(--c-sun)", display: "block", textTransform: "uppercase" }}>
-                  Status
-                </span>
-                <strong style={{ fontSize: "1.2rem", fontFamily: "var(--font-mono)", fontWeight: 900, color: "var(--c-grass)" }}>
-                  SUBMITTED
-                </strong>
-                <span style={{ fontSize: "0.85rem", display: "block", color: "var(--muted-stage)" }}>
-                  Awaiting Host Score
-                </span>
-              </div>
-            </div>
-
-            {/* Review Cards for 5 Boards */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem", marginBottom: "1.8rem" }}>
-              {boards.map((b, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    background: "var(--paper)",
-                    border: "3px solid var(--ink)",
-                    boxShadow: "3px 3px 0 var(--ink)",
-                    borderRadius: "var(--radius-md)",
-                    padding: "1.1rem 1.4rem",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                      <span style={{ fontFamily: "var(--font-mono)", fontWeight: 900, fontSize: "0.85rem", color: "var(--c-cherry)" }}>
-                        BOARD #{idx + 1}
-                      </span>
-                      <strong style={{ fontSize: "1.1rem", color: "var(--ink)" }}>{b.category.name}</strong>
-                    </div>
-                    <span style={{ fontSize: "0.8rem", fontFamily: "var(--font-mono)", color: "var(--muted-paper)", fontWeight: 700 }}>
-                      {b.dartsLanded.length} Darts Landed
-                    </span>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.6rem" }}>
-                    {b.guesses.map((g, gIdx) => (
-                      <div
-                        key={gIdx}
-                        style={{
-                          background: "rgba(245, 175, 25, 0.1)",
-                          padding: "0.5rem 0.75rem",
-                          borderRadius: "8px",
-                          border: "1px solid var(--ink)",
-                        }}
-                      >
-                        <span style={{ fontSize: "0.7rem", color: "var(--muted-paper)", fontWeight: 800, display: "block" }}>
-                          GUESS #{gIdx + 1}
-                        </span>
-                        <strong style={{ color: "var(--ink)", fontSize: "0.9rem" }}>{g.trim() || "—"}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Action Bar */}
-            <div
-              style={{
-                background: "var(--paper)",
-                border: "3px solid var(--gold-border, var(--ink))",
-                boxShadow: "6px 6px 0 var(--ink)",
-                borderRadius: "var(--radius-lg)",
-                padding: "1.2rem 1.8rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: "1rem",
-              }}
-            >
-              <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.95rem", fontWeight: 700, color: "var(--muted-paper)" }}>
-                Watch the leaderboard update live when your host posts scores.
-              </div>
+                <FontAwesomeIcon icon={faArrowLeft} style={{ marginRight: "0.4rem" }} />
+                Back to Arcade Hub
+              </button>
 
               <button
                 type="button"
-                className="btn-action btn-gold"
-                onClick={handleReturnToHub}
-                style={{ padding: "0.95rem 2rem", fontSize: "1.05rem" }}
+                className="btn-submit-bullseye"
+                onClick={() => handleSubmit(false)}
+                disabled={isSpinning || !hasSpun}
               >
-                RETURN TO ARCADE HUB
-                <FontAwesomeIcon icon={faTrophy} style={{ marginLeft: "0.6rem" }} />
+                <FontAwesomeIcon icon={faPaperPlane} />
+                {!hasSpun ? "SPIN 5 WHEELS FIRST" : "SUBMIT 3 ANSWERS FOR HOST EVALUATION"}
               </button>
             </div>
+          </div>
+        ) : (
+          /* SUBMITTED SUCCESS VIEW */
+          <div className="bullseye-submitted-card">
+            <div className="submitted-badge-check">
+              <FontAwesomeIcon icon={faCheck} />
+            </div>
+
+            <h3 style={{ fontSize: "1.8rem", fontWeight: 900, color: "var(--ink)", margin: 0 }}>
+              ANSWERS SUBMITTED SUCCESSFULLY!
+            </h3>
+
+            <p style={{ color: "var(--muted-paper)", fontSize: "1.05rem", fontWeight: 600, maxWidth: "580px", margin: 0 }}>
+              Your 3 answers have been sent to the Admin Scorer Panel. The judges will review your submissions side-by-side against the 5 criteria and award your tournament score!
+            </p>
+
+            {/* Submitted recap */}
+            <div
+              style={{
+                width: "100%",
+                background: "#f8fafc",
+                border: "2px solid var(--ink)",
+                borderRadius: "14px",
+                padding: "1.2rem",
+                textAlign: "left",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.75rem",
+              }}
+            >
+              <div style={{ fontWeight: 900, fontSize: "0.85rem", color: "var(--gold-dark)", textTransform: "uppercase" }}>
+                SUBMITTED SUMMARY:
+              </div>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                {landedCriteria.map((c, i) => (
+                  <span key={i} className="criteria-pill" style={{ fontSize: "0.78rem" }}>
+                    <span className="criteria-pill-label">{c.label}:</span> {c.value}
+                  </span>
+                ))}
+              </div>
+
+              <div style={{ marginTop: "0.4rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                {answers.map((ans, i) => (
+                  <div key={i} style={{ fontSize: "0.92rem", fontWeight: 700, color: "var(--ink)" }}>
+                    #{i + 1}: {ans || "(blank)"}{" "}
+                    {notes[i] && <span style={{ color: "#64748b", fontWeight: 500, fontSize: "0.82rem" }}>({notes[i]})</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="btn-action btn-gold"
+              onClick={() => onFinish(currentScore || 0)}
+              style={{ width: "100%", maxWidth: "380px", padding: "1rem 2rem", fontSize: "1.1rem" }}
+            >
+              <FontAwesomeIcon icon={faTrophy} style={{ marginRight: "0.5rem" }} />
+              RETURN TO ARCADE HUB
+            </button>
           </div>
         )}
       </div>

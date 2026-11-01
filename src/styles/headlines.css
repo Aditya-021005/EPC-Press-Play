@@ -110,7 +110,7 @@
 .real-btn:hover:not(:disabled) {
   transform: translate(-2px, -2px);
   box-shadow: 7px 7px 0 var(--c-grass);
-  background: #f0fdf4;
+  background: #fffdf0;
 }
 
 .real-btn:active:not(:disabled) {
@@ -128,7 +128,7 @@
 .fake-btn:hover:not(:disabled) {
   transform: translate(-2px, -2px);
   box-shadow: 7px 7px 0 var(--c-cherry);
-  background: #fff1f2;
+  background: #faf5ff;
 }
 
 .fake-btn:active:not(:disabled) {
@@ -182,7 +182,7 @@
 
 .reveal-badge.badge-wrong {
   background: var(--c-cherry);
-  color: var(--ink);
+  color: #ffffff;
 }
 
 .reveal-title {

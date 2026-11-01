@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { MILLIONAIRE_QUESTIONS_POOL, MillionaireQuestion } from "@/data/millionaire";
-import { fetchGameContent } from "@/lib/gameContent";
+import { pickNonRepeatingItems } from "@/lib/questionTracker";
 import { sound } from "@/lib/audio";
 import confetti from "canvas-confetti";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -18,63 +18,92 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 interface ReverseMillionaireProps {
+  isDemo?: boolean;
   onFinish: (score: number) => void;
   onBack: () => void;
-  onUpdateMeta?: (meta: { title: string; score: number; roundInfo?: string }) => void;
+  onUpdateMeta?: (meta: {
+    title: string;
+    score: number;
+    roundInfo?: string;
+    timeLeft?: number;
+    totalTime?: number;
+    onEndGame?: () => void;
+  }) => void;
 }
 
-export default function ReverseMillionaire({ onFinish, onBack, onUpdateMeta }: ReverseMillionaireProps) {
-  // Fixed game rules: 5 questions, 100 initial coins, 30s per question
+// Equal coin distribution helper: assigns base whole coins to each door,
+// then distributes any remainder (1, 2, or 3) to distinct random doors (never giving both to the same door)
+function distributeCoinsEqually(total: number): [number, number, number, number] {
+  if (total <= 0) return [0, 0, 0, 0];
+  const base = Math.floor(total / 4);
+  const remainder = total % 4; // 0, 1, 2, or 3
+
+  const result: [number, number, number, number] = [base, base, base, base];
+
+  if (remainder > 0) {
+    // Pick `remainder` distinct random indices among [0, 1, 2, 3]
+    const indices = [0, 1, 2, 3].sort(() => 0.5 - Math.random());
+    for (let i = 0; i < remainder; i++) {
+      result[indices[i]] += 1;
+    }
+  }
+
+  return result;
+}
+
+export default function ReverseMillionaire({ isDemo = false, onFinish, onBack, onUpdateMeta }: ReverseMillionaireProps) {
+  // Fixed game rules: 5 questions, 100 initial coins, 60s (1 min) per question
   const TOTAL_QUESTIONS = 5;
   const INITIAL_COINS = 100;
+  const QUESTION_TIMEOUT = 60;
 
-  const [pool, setPool] = useState<MillionaireQuestion[]>(MILLIONAIRE_QUESTIONS_POOL);
+  const [pool] = useState<MillionaireQuestion[]>(MILLIONAIRE_QUESTIONS_POOL);
   const [gameStarted, setGameStarted] = useState(false);
   const [questions, setQuestions] = useState<MillionaireQuestion[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [currentCoins, setCurrentCoins] = useState(INITIAL_COINS);
 
-  useEffect(() => {
-    fetchGameContent().then((content) => {
-      if (content?.millionaire && content.millionaire.length > 0) {
-        setPool(content.millionaire);
-      }
-    });
-  }, []);
-
-  // Exact coins allocated across [A, B, C, D]
-  const [coinsAllocated, setCoinsAllocated] = useState<[number, number, number, number]>([25, 25, 25, 25]);
+  // Exact coins allocated across [A, B, C, D] (starts at 0 for all rounds, manually assigned by player)
+  const [coinsAllocated, setCoinsAllocated] = useState<[number, number, number, number]>([0, 0, 0, 0]);
   const [isDropping, setIsDropping] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
   const [survivedCoins, setSurvivedCoins] = useState(0);
 
-  // 30 seconds timer per question
-  const [timeLeft, setTimeLeft] = useState(30);
+  // 60 seconds (1 minute) timer per question
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIMEOUT);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+  }, []);
 
   const currentQ = questions[currentQIndex] || pool[0];
 
   const handleStartGame = () => {
     sound.playClick(600);
-    const shuffled = [...pool].sort(() => 0.5 - Math.random()).slice(0, TOTAL_QUESTIONS);
-    setQuestions(shuffled);
+    const selected = pickNonRepeatingItems("epc_used_millionaire_questions", pool, TOTAL_QUESTIONS, (q) => q.id);
+    setQuestions(selected);
     setCurrentQIndex(0);
     setCurrentCoins(INITIAL_COINS);
-    setCoinsAllocated([25, 25, 25, 25]);
+    setCoinsAllocated([0, 0, 0, 0]);
     setIsRevealed(false);
     setIsDropping(false);
     setGameStarted(true);
-    setTimeLeft(30);
+    setTimeLeft(QUESTION_TIMEOUT);
   };
 
   const totalAllocated = coinsAllocated[0] + coinsAllocated[1] + coinsAllocated[2] + coinsAllocated[3];
   const unallocatedCoins = currentCoins - totalAllocated;
 
-  // 30-second countdown effect
+  // 60-second countdown effect
   useEffect(() => {
     if (!gameStarted || isRevealed || isDropping) return;
 
-    setTimeLeft(30);
+    setTimeLeft(QUESTION_TIMEOUT);
     if (timerRef.current) clearInterval(timerRef.current);
 
     timerRef.current = setInterval(() => {
@@ -128,9 +157,7 @@ export default function ReverseMillionaire({ onFinish, onBack, onUpdateMeta }: R
     if (isRevealed || isDropping) return;
     sound.playClick(600);
     if (preset === "even") {
-      const base = Math.floor(currentCoins / 4);
-      const rem = currentCoins % 4;
-      setCoinsAllocated([base + (rem > 0 ? 1 : 0), base + (rem > 1 ? 1 : 0), base + (rem > 2 ? 1 : 0), base]);
+      setCoinsAllocated(distributeCoinsEqually(currentCoins));
     } else if (preset === "clear") {
       setCoinsAllocated([0, 0, 0, 0]);
     } else if (preset === "allIn") {
@@ -145,12 +172,39 @@ export default function ReverseMillionaire({ onFinish, onBack, onUpdateMeta }: R
     setIsDropping(true);
     sound.playTrapdoorDrop();
 
+    // If no coins have been assigned to anyone, assign coins equally (e.g. 6 pts -> 1, 2, 2, 1)
+    let finalAllocation: [number, number, number, number] = [...coinsAllocated];
+    const totalAllocatedSoFar = finalAllocation[0] + finalAllocation[1] + finalAllocation[2] + finalAllocation[3];
+
+    if (totalAllocatedSoFar === 0) {
+      finalAllocation = distributeCoinsEqually(currentCoins);
+      setCoinsAllocated(finalAllocation);
+    } else if (totalAllocatedSoFar < currentCoins) {
+      // Distribute remaining unallocated coins equally among doors
+      const remainderToDistribute = currentCoins - totalAllocatedSoFar;
+      const extra = distributeCoinsEqually(remainderToDistribute);
+      finalAllocation = [
+        finalAllocation[0] + extra[0],
+        finalAllocation[1] + extra[1],
+        finalAllocation[2] + extra[2],
+        finalAllocation[3] + extra[3],
+      ];
+      setCoinsAllocated(finalAllocation);
+    }
+
     setTimeout(() => {
       setIsDropping(false);
       setIsRevealed(true);
 
-      const safe = coinsAllocated[currentQ.correctIndex];
+      const safe = finalAllocation[currentQ.correctIndex];
       setSurvivedCoins(safe);
+      setCurrentCoins(safe);
+
+      onUpdateMeta?.({
+        title: "Rev. Millionaire",
+        score: safe,
+        roundInfo: `Q ${currentQIndex + 1}/${TOTAL_QUESTIONS} • ${safe} Coins Safe`,
+      });
 
       if (safe > 0) {
         sound.playSuccess();
@@ -162,43 +216,85 @@ export default function ReverseMillionaire({ onFinish, onBack, onUpdateMeta }: R
   };
 
   const handleLockIn = () => {
-    if (totalAllocated !== currentCoins) {
-      sound.playBuzzer();
-      return;
-    }
     executeLockIn();
   };
+
+  const [autoAdvanceSec, setAutoAdvanceSec] = useState<number | null>(null);
+  const handleProceedRef = useRef<() => void>(() => {});
 
   const handleProceed = () => {
     sound.playClick();
     const nextCoins = survivedCoins;
-    setCurrentCoins(nextCoins);
 
     if (nextCoins === 0 || currentQIndex + 1 >= TOTAL_QUESTIONS) {
       sound.playSuccess();
       confetti({ particleCount: 100, spread: 80 });
       onFinish(nextCoins);
     } else {
-      setCurrentQIndex((prev) => prev + 1);
-      // Default even split of next coins
-      const base = Math.floor(nextCoins / 4);
-      const rem = nextCoins % 4;
-      setCoinsAllocated([base + (rem > 0 ? 1 : 0), base + (rem > 1 ? 1 : 0), base + (rem > 2 ? 1 : 0), base]);
+      const nextQ = currentQIndex + 1;
+      setCurrentQIndex(nextQ);
+      // All rounds start at 0 coins allocated, so player assigns them manually!
+      setCoinsAllocated([0, 0, 0, 0]);
       setIsRevealed(false);
+      setAutoAdvanceSec(null);
+      onUpdateMeta?.({
+        title: "Rev. Millionaire",
+        score: nextCoins,
+        roundInfo: `Q ${nextQ + 1}/${TOTAL_QUESTIONS} • ${nextCoins} Coins • 1 Min`,
+      });
     }
   };
 
+  useEffect(() => {
+    handleProceedRef.current = handleProceed;
+  });
+
+  // Auto-advance in 5s when answer is revealed
+  useEffect(() => {
+    if (!isRevealed) {
+      setAutoAdvanceSec(null);
+      return;
+    }
+    setAutoAdvanceSec(5);
+    const advanceTimer = setInterval(() => {
+      setAutoAdvanceSec((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          clearInterval(advanceTimer);
+          handleProceedRef.current();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(advanceTimer);
+  }, [isRevealed, currentQIndex]);
+
   const optionLabels = ["A", "B", "C", "D"];
 
+  const onFinishRef = useRef(onFinish);
   useEffect(() => {
-    onUpdateMeta?.({
+    onFinishRef.current = onFinish;
+  });
+
+  const onUpdateMetaRef = useRef(onUpdateMeta);
+  useEffect(() => {
+    onUpdateMetaRef.current = onUpdateMeta;
+  });
+
+  useEffect(() => {
+    onUpdateMetaRef.current?.({
       title: "Rev. Millionaire",
-      score: currentCoins,
+      score: gameStarted && (isRevealed || currentQIndex > 0) ? currentCoins : 0,
       roundInfo: gameStarted
         ? `Q ${currentQIndex + 1}/${TOTAL_QUESTIONS} • ${currentCoins} Coins • ${isRevealed ? "Revealed" : `${timeLeft}s`}`
         : "Ready",
+      timeLeft: gameStarted && !isRevealed && !isDropping ? timeLeft : undefined,
+      totalTime: 60,
+      onEndGame: gameStarted ? () => onFinishRef.current(isRevealed ? survivedCoins : currentCoins) : undefined,
     });
-  }, [currentCoins, currentQIndex, gameStarted, isRevealed, timeLeft, onUpdateMeta]);
+  }, [currentCoins, currentQIndex, gameStarted, isRevealed, isDropping, timeLeft, survivedCoins]);
 
   return (
     <div className="game-arena">
@@ -211,7 +307,7 @@ export default function ReverseMillionaire({ onFinish, onBack, onUpdateMeta }: R
             <h3 style={{ fontSize: "1.7rem", fontWeight: 900 }}>REVERSE MILLIONAIRE</h3>
             <p style={{ fontSize: "1rem", lineHeight: 1.5, margin: "1rem 0 1.5rem" }}>
               You start with <strong>100 Coins</strong> and face <strong>5 high-stakes questions</strong>.
-              Distribute your coins across the 4 trapdoors. Each question gives you <strong>30 seconds</strong>.
+              Distribute your coins across the 4 trapdoors. Each question gives you <strong>1 minute (60s)</strong>.
               Only coins placed on the safe trapdoor carry forward!
             </p>
 
@@ -229,7 +325,7 @@ export default function ReverseMillionaire({ onFinish, onBack, onUpdateMeta }: R
               }}
             >
               <div>💰 Starting Vault: 100 Coins</div>
-              <div>⏱ Time per Question: 30s</div>
+              <div>⏱ Time per Question: 60s (1 min)</div>
               <div>❓ Total: 5 Questions</div>
             </div>
 
@@ -305,11 +401,51 @@ export default function ReverseMillionaire({ onFinish, onBack, onUpdateMeta }: R
                     <div className="podium-option-text">{optText}</div>
 
                     <div className="podium-coin-display">
-                      <div className="coin-amt" style={{ fontSize: "1.8rem", fontWeight: 900 }}>
-                        {coinsOnThis}
-                        <FontAwesomeIcon icon={faCoins} style={{ fontSize: "1rem", marginLeft: "0.35rem" }} />
-                      </div>
-                      <div className="coin-pct" style={{ fontSize: "0.85rem", color: "var(--muted-paper)" }}>
+                      {!isRevealed ? (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={currentCoins}
+                            value={coinsOnThis === 0 ? "" : coinsOnThis}
+                            placeholder="0"
+                            onChange={(e) => {
+                              const raw = e.target.value.trim();
+                              if (raw === "") {
+                                setExactCoins(idx, 0);
+                              } else {
+                                const parsed = parseInt(raw, 10);
+                                if (!isNaN(parsed)) {
+                                  setExactCoins(idx, Math.max(0, parsed));
+                                }
+                              }
+                            }}
+                            className="podium-coin-input"
+                            style={{
+                              width: "82px",
+                              height: "40px",
+                              textAlign: "center",
+                              fontSize: "1.45rem",
+                              fontWeight: 900,
+                              fontFamily: "var(--font-mono, monospace)",
+                              background: "#ffffff",
+                              color: "var(--ink, #000)",
+                              border: "2px solid var(--ink, #000)",
+                              borderRadius: "8px",
+                              boxShadow: "inset 1px 1px 2px rgba(0,0,0,0.1)",
+                              outline: "none",
+                            }}
+                            aria-label={`Enter coins for option ${optionLabels[idx]}`}
+                          />
+                          <FontAwesomeIcon icon={faCoins} style={{ fontSize: "1.1rem", color: "var(--gold-primary, #f5af19)" }} />
+                        </div>
+                      ) : (
+                        <div className="coin-amt" style={{ fontSize: "1.6rem", fontWeight: 900 }}>
+                          {coinsOnThis}
+                          <FontAwesomeIcon icon={faCoins} style={{ fontSize: "1rem", marginLeft: "0.35rem" }} />
+                        </div>
+                      )}
+                      <div className="coin-pct" style={{ fontSize: "0.82rem", color: "var(--muted-paper)", marginTop: "0.25rem" }}>
                         {currentCoins > 0 ? Math.round((coinsOnThis / currentCoins) * 100) : 0}% of vault
                       </div>
                     </div>
@@ -371,13 +507,23 @@ export default function ReverseMillionaire({ onFinish, onBack, onUpdateMeta }: R
                 <button
                   type="button"
                   className="btn-lock-in"
-                  disabled={unallocatedCoins !== 0 || isDropping}
+                  disabled={isDropping}
                   onClick={handleLockIn}
                 >
                   {isDropping ? (
                     <>
                       <FontAwesomeIcon icon={faHourglassHalf} spin style={{ marginRight: "0.5rem" }} />
                       OPENING TRAPDOORS...
+                    </>
+                  ) : totalAllocated === 0 ? (
+                    <>
+                      <FontAwesomeIcon icon={faLock} style={{ marginRight: "0.5rem" }} />
+                      SPLIT EQUALLY & LOCK IN ({currentCoins} COINS)
+                    </>
+                  ) : unallocatedCoins > 0 ? (
+                    <>
+                      <FontAwesomeIcon icon={faLock} style={{ marginRight: "0.5rem" }} />
+                      SPLIT REST ({unallocatedCoins}) & LOCK IN
                     </>
                   ) : (
                     <>
@@ -420,16 +566,16 @@ export default function ReverseMillionaire({ onFinish, onBack, onUpdateMeta }: R
                   type="button"
                   className="btn-action btn-gold"
                   onClick={handleProceed}
-                  style={{ width: "100%", maxWidth: "400px" }}
+                  style={{ width: "100%", maxWidth: "420px" }}
                 >
                   {survivedCoins > 0 && currentQIndex + 1 < TOTAL_QUESTIONS ? (
                     <>
-                      PROCEED TO QUESTION {currentQIndex + 2} OF {TOTAL_QUESTIONS}
+                      PROCEED TO QUESTION {currentQIndex + 2} OF {TOTAL_QUESTIONS} {autoAdvanceSec !== null ? `(${autoAdvanceSec}s)` : ""}
                       <FontAwesomeIcon icon={faPlay} style={{ marginLeft: "0.5rem" }} />
                     </>
                   ) : (
                     <>
-                      FINISH GAME & LOCK TOURNAMENT SCORE ({survivedCoins} PTS)
+                      FINISH GAME & LOCK TOURNAMENT SCORE ({survivedCoins} PTS) {autoAdvanceSec !== null ? `(${autoAdvanceSec}s)` : ""}
                       <FontAwesomeIcon icon={faTrophy} style={{ marginLeft: "0.5rem" }} />
                     </>
                   )}

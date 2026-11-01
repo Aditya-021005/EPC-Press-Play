@@ -22,10 +22,21 @@ import {
   faLock,
 } from "@fortawesome/free-solid-svg-icons";
 
+import { submitGameAnswers, getStoredActiveTeam, CategorySubmissionItem } from "@/lib/tournamentState";
+
 interface CategoriesProps {
+  activeTeamName?: string;
+  isDemo?: boolean;
   onFinish: (score: number) => void;
   onBack: () => void;
-  onUpdateMeta?: (meta: { title: string; score: number; roundInfo?: string }) => void;
+  onUpdateMeta?: (meta: {
+    title: string;
+    score: number;
+    roundInfo?: string;
+    timeLeft?: number;
+    totalTime?: number;
+    onEndGame?: () => void;
+  }) => void;
 }
 
 type GamePhase = "select" | "play" | "score";
@@ -169,7 +180,7 @@ function MiniCard({ card }: { card: CategoryCard }) {
 
 /* ====================================================================== */
 
-export default function Categories({ onFinish, onBack, onUpdateMeta }: CategoriesProps) {
+export default function Categories({ activeTeamName, isDemo = false, onFinish, onBack, onUpdateMeta }: CategoriesProps) {
   const [cardsPool, setCardsPool] = useState<CategoryCard[]>(CATEGORY_CARDS_POOL);
   const [phase, setPhase] = useState<GamePhase>("select");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -184,8 +195,13 @@ export default function Categories({ onFinish, onBack, onUpdateMeta }: Categorie
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Load custom card mappings from backend
+  // Load custom card mappings from backend and scroll to top
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
     fetchGameContent().then((data) => {
       if (data && data.categories && data.categories.length > 0) {
         setCardsPool(data.categories);
@@ -295,8 +311,32 @@ export default function Categories({ onFinish, onBack, onUpdateMeta }: Categorie
   const handleProceedToScoring = () => {
     setTimerRunning(false);
     sound.playSuccess();
-    setMarks(answers.map((ans) => (validateCategoryAnswer(ans, letter).valid ? 10 : 0)));
+    const initialMarks = answers.map((ans) => (validateCategoryAnswer(ans, letter).valid ? 10 : 0));
+    setMarks(initialMarks);
     setPhase("score");
+    const initialTotal = initialMarks.reduce((acc: number, m: number) => acc + m, 0);
+    onUpdateMeta?.({
+      title: "Categories",
+      score: initialTotal,
+      roundInfo: `EPC Audit (${initialTotal}/100 PTS)`,
+    });
+
+    const targetTeam = activeTeamName || getStoredActiveTeam();
+    if (targetTeam) {
+      const payloadItems: CategorySubmissionItem[] = selectedCards.map((card, idx) => ({
+        cardId: card.id,
+        cardName: card.name,
+        cardRank: card.rank,
+        cardSuit: card.suit,
+        hint: card.hint,
+        letter,
+        enteredAnswer: (answers[idx] || "").trim(),
+        score: initialMarks[idx] || 0,
+      }));
+      if (!isDemo) {
+        submitGameAnswers(targetTeam, "categories", { items: payloadItems, letter });
+      }
+    }
   };
 
   /* ---------- Scoring ---------- */
@@ -305,6 +345,12 @@ export default function Categories({ onFinish, onBack, onUpdateMeta }: Categorie
     setMarks((prev) => {
       const copy = [...prev];
       copy[idx] = value;
+      const updatedTotal = copy.reduce((acc: number, m: number) => acc + m, 0);
+      onUpdateMeta?.({
+        title: "Categories",
+        score: updatedTotal,
+        roundInfo: `EPC Audit (${updatedTotal}/100 PTS)`,
+      });
       return copy;
     });
   };
@@ -315,16 +361,37 @@ export default function Categories({ onFinish, onBack, onUpdateMeta }: Categorie
     onFinish(totalScore);
   };
 
+  const onUpdateMetaRef = useRef(onUpdateMeta);
+  useEffect(() => {
+    onUpdateMetaRef.current = onUpdateMeta;
+  });
+
   /* ---------- Header meta ---------- */
   useEffect(() => {
     if (phase === "select") {
-      onUpdateMeta?.({ title: "Categories", score: 0, roundInfo: `Pick 10 Cards (${selectedIds.length}/10)` });
+      onUpdateMetaRef.current?.({
+        title: "Categories",
+        score: 0,
+        roundInfo: `Pick 10 Cards (${selectedIds.length}/10)`,
+      });
     } else if (phase === "play") {
-      onUpdateMeta?.({ title: "Categories", score: 0, roundInfo: `Letter '${letter}' • ${timeLeft}s Left` });
+      onUpdateMetaRef.current?.({
+        title: "Categories",
+        score: 0,
+        roundInfo: `Letter '${letter}' • ${timeLeft}s Left`,
+        timeLeft,
+        totalTime: ROUND_SECONDS,
+        onEndGame: handleProceedToScoring,
+      });
     } else {
-      onUpdateMeta?.({ title: "Categories", score: totalScore, roundInfo: `EPC Audit (${totalScore}/100 PTS)` });
+      onUpdateMetaRef.current?.({
+        title: "Categories",
+        score: totalScore,
+        roundInfo: `EPC Audit (${totalScore}/100 PTS)`,
+        onEndGame: handleConfirmAndLockScore,
+      });
     }
-  }, [phase, selectedIds.length, letter, timeLeft, totalScore, onUpdateMeta]);
+  }, [phase, selectedIds.length, letter, timeLeft, totalScore]);
 
   /* ====================================================================== */
   return (
@@ -455,18 +522,6 @@ export default function Categories({ onFinish, onBack, onUpdateMeta }: Categorie
                 <span className="cat-kicker">Active letter</span>
                 <h3>Answers start with “{letter}”</h3>
               </div>
-              <button
-                type="button"
-                className="btn-secondary-sm"
-                onClick={() => {
-                  sound.playClick();
-                  setIsWheelOpen(true);
-                }}
-                title="Re-spin letter wheel"
-                style={{ fontSize: "0.78rem", padding: "0.45rem 0.75rem" }}
-              >
-                <FontAwesomeIcon icon={faRotate} /> Re-spin Wheel
-              </button>
               <div className={`cat-timer ${timeLeft <= 10 ? "is-low" : ""}`}>{timeLeft}s</div>
               <button type="button" className="btn-action btn-green cat-finish" onClick={handleProceedToScoring}>
                 <FontAwesomeIcon icon={faCheck} /> Finish & audit

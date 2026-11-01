@@ -102,6 +102,10 @@ class SoundEngine {
     osc.stop(this.ctx.currentTime + 0.4);
   }
 
+  public playHazard() {
+    this.playBuzzer();
+  }
+
   public playHazardAlarm() {
     if (this.muted) return;
     this.initCtx();

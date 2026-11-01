@@ -319,19 +319,19 @@
 
 /* Tile State: Green (Correct) */
 .gg-tile-cell.tile-green {
-  background: var(--c-grass);
+  background: #22c55e;
   border: 3px solid var(--ink);
   color: #ffffff;
   box-shadow: 3px 3px 0 var(--ink);
   animation: flipGreen 0.4s ease forwards;
 }
 
-/* Tile State: Yellow Hazard */
+/* Tile State: Yellow (Letter in word, wrong position) */
 .gg-tile-cell.tile-yellow {
-  background: var(--c-sun);
+  background: #eab308;
   border: 3px solid var(--ink);
-  color: var(--ink);
-  box-shadow: 3px 3px 0 var(--c-cherry);
+  color: #0d041c;
+  box-shadow: 3px 3px 0 var(--ink);
   animation: flipYellow 0.4s ease forwards;
 }
 
@@ -344,13 +344,13 @@
 
 @keyframes flipGreen {
   0% { transform: rotateX(0deg); }
-  50% { transform: rotateX(90deg); background: var(--c-grass); }
+  50% { transform: rotateX(90deg); background: #22c55e; }
   100% { transform: rotateX(0deg); }
 }
 
 @keyframes flipYellow {
   0% { transform: rotateX(0deg); }
-  50% { transform: rotateX(90deg); background: var(--c-sun); }
+  50% { transform: rotateX(90deg); background: #eab308; }
   100% { transform: rotateX(0deg); }
 }
 
@@ -590,15 +590,15 @@
 
 /* Keyboard Key Evaluated States */
 .gg-kb-btn.key-green {
-  background: var(--c-grass) !important;
+  background: #22c55e !important;
   color: #ffffff !important;
   box-shadow: 2px 2px 0 var(--ink);
 }
 
 .gg-kb-btn.key-yellow {
-  background: var(--c-sun) !important;
-  color: var(--ink) !important;
-  box-shadow: 2px 2px 0 var(--c-cherry);
+  background: #eab308 !important;
+  color: #0d041c !important;
+  box-shadow: 2px 2px 0 var(--ink);
 }
 
 .gg-kb-btn.key-gray {
@@ -757,8 +757,8 @@
   margin-top: 2px;
 }
 
-.gg-rule-icon.ri-green { background: var(--c-grass); color: #fff; }
-.gg-rule-icon.ri-yellow { background: var(--c-sun); color: var(--ink); }
+.gg-rule-icon.ri-green { background: #22c55e; color: #fff; }
+.gg-rule-icon.ri-yellow { background: #eab308; color: #0d041c; }
 .gg-rule-icon.ri-gray { background: var(--stage-3); color: #fff; }
 
 @keyframes fadeIn {

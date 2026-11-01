@@ -1,14 +1,14 @@
 "use client";
 
 import React from "react";
-import { TeamScore } from "@/lib/tournamentState";
+import { TeamScore, isGamePlayed } from "@/lib/tournamentState";
 import { sound } from "@/lib/audio";
 import "@/styles/hub.css";
 
 interface ArcadeHubProps {
   activeTeam: TeamScore;
   allTeams: TeamScore[];
-  onSelectGame: (gameId: string) => void;
+  onSelectGame: (gameId: string, mode: "official" | "demo") => void;
   onLogout: () => void;
 }
 
@@ -39,7 +39,7 @@ const GAMES: GameDef[] = [
     title: "Greener Grass",
     short: "Grass",
     tag: "Wordle twist",
-    accent: "var(--c-grass)",
+    accent: "var(--c-gold-bright, #ffd700)",
     blurb: "Points only for green tiles. 30 seconds per word. Yellow hazards bust the round!",
     facts: ["5 words", "30s per guess", "Yellow busts"],
     cta: "Play Greener Grass",
@@ -50,7 +50,7 @@ const GAMES: GameDef[] = [
     title: "Real Headline or Not",
     short: "Headlines",
     tag: "Truth vs fiction",
-    accent: "var(--c-sun)",
+    accent: "var(--c-purple-royal, #8b5cf6)",
     blurb: "Bizarre headlines with a 20-second clock. Spot the real-world madness among fakes.",
     facts: ["10 rounds", "20s per headline", "10 pts per call"],
     cta: "Play Headlines",
@@ -61,7 +61,7 @@ const GAMES: GameDef[] = [
     title: "Name That Tune",
     short: "Tune",
     tag: "Lyric sleuth",
-    accent: "var(--c-sky)",
+    accent: "var(--c-gold-primary, #f5af19)",
     blurb: "Single lyric snippet under a 30s clock. Manually type song and artist. Host evaluated.",
     facts: ["10 lyrics", "30s per track", "EPC scored (0, 5, 10 pts)"],
     cta: "Play Name That Tune",
@@ -72,7 +72,7 @@ const GAMES: GameDef[] = [
     title: "Categories",
     short: "Categories",
     tag: "52 Playing Cards",
-    accent: "var(--c-grape)",
+    accent: "var(--c-purple-bright, #a855f7)",
     blurb: "52 playing cards deck, draw 10, roll a random letter, and sprint for 60 seconds. EPC scored.",
     facts: ["52 playing cards", "60s sprint", "EPC scored (0, 5, 10 pts)"],
     cta: "Play Categories",
@@ -83,7 +83,7 @@ const GAMES: GameDef[] = [
     title: "Reverse Millionaire",
     short: "Millionaire",
     tag: "Trapdoor heist",
-    accent: "var(--c-coin)",
+    accent: "var(--c-gold-amber, #e69500)",
     blurb: "5 questions, 100 coins, 30s per question. Distribute coins across trapdoors. Safe door carries on.",
     facts: ["100 coins", "5 questions", "30s per question"],
     cta: "Play Reverse Millionaire",
@@ -94,7 +94,7 @@ const GAMES: GameDef[] = [
     title: "Bullseye",
     short: "Bullseye",
     tag: "Darts & Archery",
-    accent: "var(--c-cherry)",
+    accent: "var(--c-purple-deep, #7c3aed)",
     blurb: "Physical darts & archery simulation. Shoot 5 target boards & enter 3 category guesses each.",
     facts: ["5 Target Boards", "3 Guesses Each", "Host Scored (0–100 pts)"],
     cta: "Play Bullseye",
@@ -134,11 +134,18 @@ export default function ArcadeHub({
 }: ArcadeHubProps) {
   const rankedTeams = [...allTeams].sort((a, b) => b.total - a.total);
   const activeRank = rankedTeams.findIndex((t) => t.name === activeTeam.name) + 1;
-  const gamesPlayed = GAMES.filter((g) => activeTeam[g.key] > 0).length;
+  const gamesPlayed = GAMES.filter((g) => isGamePlayed(activeTeam, g.key)).length;
+  const gamesRemaining = GAMES.length - gamesPlayed;
+  const isTurnComplete = gamesPlayed === GAMES.length;
 
-  const handleLaunch = (gameId: string) => {
+  const handleLaunch = (gameId: string, isPlayed: boolean, gameTitle: string, mode: "official" | "demo") => {
+    if (mode === "official" && isPlayed) {
+      sound.playHazard();
+      alert(`Your team has already completed "${gameTitle}"! Each game can be played once only in normal playing.`);
+      return;
+    }
     sound.playClick(650);
-    onSelectGame(gameId);
+    onSelectGame(gameId, mode);
   };
 
   return (
@@ -151,8 +158,19 @@ export default function ArcadeHub({
           </p>
           <h2 className="hub-title">Choose your challenge</h2>
           <p className="hub-lede">
-            Six games, 100 points each. Play through all challenges, then finish your turn to let the next team log in.
+            Each team gets 6 challenges (1 attempt per game, up to 100 points each). Once played, a game is locked. Finish your turn when done to let the next team play.
           </p>
+
+          {isTurnComplete && (
+            <div className="turn-complete-banner">
+              <h3 style={{ margin: "0 0 0.35rem", color: "#ffd700", fontSize: "1.3rem" }}>
+                🏆 All 6 Games Completed!
+              </h3>
+              <p style={{ margin: 0, color: "#f8f6ff", fontSize: "0.95rem" }}>
+                Your team has finished all available challenges with <strong>{activeTeam.total} points</strong>! Click below to finish your turn and log out.
+              </p>
+            </div>
+          )}
         </div>
 
         <section className="scorecard" aria-label="Active team score">
@@ -171,7 +189,7 @@ export default function ArcadeHub({
             }}
             style={{ width: "100%", margin: "0.5rem 0", fontSize: "0.82rem", padding: "0.5rem" }}
           >
-            Finish Turn / Give Up (Log Out)
+            {isTurnComplete ? "✓ Finish Turn & Log Out" : "Finish Turn / Give Up (Log Out)"}
           </button>
 
           <p className="scorecard__total">
@@ -179,36 +197,67 @@ export default function ArcadeHub({
           </p>
           <PointsBar team={activeTeam} size="lg" />
           <p className="scorecard__meta">
-            {gamesPlayed} of {GAMES.length} games scored
+            <strong>{gamesPlayed}</strong> of {GAMES.length} games played ({gamesRemaining} remaining)
           </p>
         </section>
       </div>
 
       {/* Game cards */}
       <ul className="games">
-        {GAMES.map((g, i) => (
-          <li key={g.id} className="game" style={{ "--accent": g.accent } as React.CSSProperties}>
-            <div className="game__band">
-              <span className="game__num">{i + 1}</span>
-              <span>{g.tag}</span>
-              <span className="game__score">
-                <strong>{activeTeam[g.key]}</strong> / {MAX_PER_GAME}
-              </span>
-            </div>
-            <div className="game__body">
-              <h3 className="game__title">{g.title}</h3>
-              <p className="game__blurb">{g.blurb}</p>
-              <ul className="game__facts">
-                {g.facts.map((f) => (
-                  <li key={f}>{f}</li>
-                ))}
-              </ul>
-              <button type="button" className="game__btn" onClick={() => handleLaunch(g.id)}>
-                {g.cta}
-              </button>
-            </div>
-          </li>
-        ))}
+        {GAMES.map((g, i) => {
+          const isPlayed = isGamePlayed(activeTeam, g.key);
+          return (
+            <li
+              key={g.id}
+              className={`game ${isPlayed ? "game--played" : ""}`}
+              style={{ "--accent": g.accent } as React.CSSProperties}
+            >
+              <div className="game__band">
+                <div className="game__band-left">
+                  <span className="game__num">{i + 1}</span>
+                  <span className="game__tag">{g.tag}</span>
+                </div>
+                <div className="game__band-right">
+                  {isPlayed ? (
+                    <span className="game__played-badge">✓ Played</span>
+                  ) : null}
+                  <span className="game__score">
+                    <strong>{activeTeam[g.key]}</strong> / {MAX_PER_GAME}
+                  </span>
+                </div>
+              </div>
+              <div className="game__body">
+                <h3 className="game__title">{g.title}</h3>
+                <p className="game__blurb">{g.blurb}</p>
+                <ul className="game__facts">
+                  {g.facts.map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+                <div className="game__launch-options">
+                  <button
+                    type="button"
+                    className="game__btn-demo"
+                    onClick={() => handleLaunch(g.id, false, g.title, "demo")}
+                    title="Play a practice demo run (no points added to tournament)"
+                  >
+                    <span>Demo Run (0 Pts)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`game__btn-official ${isPlayed ? "game__btn--locked" : ""}`}
+                    onClick={() => handleLaunch(g.id, isPlayed, g.title, "official")}
+                    disabled={isPlayed}
+                    title={isPlayed ? "You have already completed this game in normal playing (1 play limit)" : "Play official tournament run for points"}
+                  >
+                    {isPlayed ? `✓ Played (${activeTeam[g.key]} Pts)` : "Normal Playing"}
+                  </button>
+                </div>
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
       {/* Standings */}

@@ -36,12 +36,12 @@
   --muted-stage: #c8b8ec;
   --muted-paper: #5d4680;
 
-  --c-grass: #10b981;
-  --c-sun: #f5af19;
-  --c-sky: #38bdf8;
-  --c-grape: #b388ff;
-  --c-coin: #f59e0b;
-  --c-cherry: #f43f5e;
+  --c-grass: #ffd700;
+  --c-sun: #8b5cf6;
+  --c-sky: #f5af19;
+  --c-grape: #a855f7;
+  --c-coin: #e69500;
+  --c-cherry: #7c3aed;
 
   --radius: 20px;
   --track: rgba(255, 255, 255, 0.14);
@@ -266,34 +266,66 @@
 .game__band {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.75rem 1.1rem;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.95rem;
   background: var(--accent);
   color: #0d041c;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 800;
   border-bottom: 2px solid rgba(13, 4, 28, 0.15);
+  min-height: 3.25rem;
+  box-sizing: border-box;
+}
+
+.game__band-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.game__tag {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: inherit;
+}
+
+.game__band-right {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .game__num {
   display: grid;
   place-items: center;
-  width: 1.9rem;
-  height: 1.9rem;
+  width: 1.85rem;
+  height: 1.85rem;
+  flex-shrink: 0;
   border-radius: 50%;
   background: var(--ink);
   color: #ffd700;
   font-weight: 900;
   border: 1px solid rgba(255, 215, 0, 0.4);
+  font-size: 0.85rem;
 }
 
 .game__score {
-  margin-left: auto;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 0.85rem;
 }
 
 .game__score strong {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
 }
 
@@ -369,6 +401,159 @@
 .game__btn:focus-visible {
   outline: 3px solid var(--gold-primary);
   outline-offset: 3px;
+}
+
+/* ---------- Completed Game Card Styling ---------- */
+.game--played {
+  border-color: rgba(255, 215, 0, 0.5) !important;
+  background: #fdfaf0;
+  opacity: 0.95;
+}
+
+.game--played .game__band {
+  background: linear-gradient(90deg, #2a1548 0%, #1e0d35 100%) !important;
+  color: #ffd700 !important;
+  border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.game__played-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  background: rgba(34, 197, 94, 0.18);
+  border: 1.5px solid #22c55e;
+  color: #15803d;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+
+.game--played .game__played-badge {
+  background: rgba(255, 215, 0, 0.2) !important;
+  border-color: #ffd700 !important;
+  color: #ffd700 !important;
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.25);
+}
+
+.game__btn--locked {
+  background: linear-gradient(135deg, #3d2b56 0%, #25173b 100%) !important;
+  color: #cbbad9 !important;
+  border: 2px solid rgba(255, 215, 0, 0.3) !important;
+  box-shadow: 2px 2px 0 #120622 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  filter: none !important;
+  opacity: 0.92;
+}
+
+.game__btn--locked:hover,
+.game__btn--locked:active {
+  transform: none !important;
+  filter: none !important;
+  box-shadow: 2px 2px 0 #120622 !important;
+}
+
+/* Dual Run Options: Demo Run vs Normal Playing */
+.game__launch-options {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 0.55rem;
+  width: 100%;
+  margin-top: 0.65rem;
+}
+
+@media (max-width: 520px) {
+  .game__launch-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+.game__btn-demo {
+  appearance: none;
+  width: 100%;
+  border: 2px solid #ffd700;
+  border-radius: 12px;
+  padding: 0.85rem 0.65rem;
+  background: #ffffff;
+  color: #000000 !important;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.game__btn-demo span,
+.game__btn-demo svg {
+  color: #000000 !important;
+}
+
+.game__btn-demo:hover {
+  background: #fef08a;
+  border-color: #facc15;
+  color: #000000 !important;
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4), 0 0 12px rgba(255, 215, 0, 0.4);
+}
+
+.game__btn-demo:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.game__btn-official {
+  appearance: none;
+  width: 100%;
+  border: 2px solid #ffe082;
+  border-radius: 12px;
+  padding: 0.85rem 0.8rem;
+  background: var(--gold-gradient);
+  color: #0d041c;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  box-shadow: 3px 3px 0 var(--gold-dark);
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.game__btn-official:hover {
+  filter: brightness(1.1);
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--gold-dark), 0 0 16px rgba(255, 215, 0, 0.6);
+}
+
+.game__btn-official:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--gold-dark);
+}
+
+.turn-complete-banner {
+  margin-top: 1.25rem;
+  padding: 1.1rem 1.35rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(245, 175, 25, 0.22) 0%, rgba(139, 92, 246, 0.25) 100%);
+  border: 2px solid var(--gold-primary);
+  box-shadow: 0 0 25px rgba(245, 175, 25, 0.25);
+  text-align: center;
 }
 
 /* ---------- Standings (Sultan's Leaderboard) ---------- */
@@ -557,6 +742,21 @@ td.col-total strong {
 
   .col-rank {
     width: 2.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .game__band {
+    flex-wrap: wrap;
+    padding: 0.55rem 0.8rem;
+    min-height: auto;
+  }
+
+  .game__band-right {
+    width: 100%;
+    justify-content: space-between;
+    padding-top: 0.35rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
   }
 }
 

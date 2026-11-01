@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { TUNES_POOL, TuneItem } from "@/data/tunes";
-import { fetchGameContent } from "@/lib/gameContent";
+import { pickNonRepeatingItems } from "@/lib/questionTracker";
 import { sound } from "@/lib/audio";
 import confetti from "canvas-confetti";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -15,10 +15,21 @@ import {
   faClipboardCheck,
 } from "@fortawesome/free-solid-svg-icons";
 
+import { submitGameAnswers, getStoredActiveTeam, NameThatTuneSubmissionItem } from "@/lib/tournamentState";
+
 interface NameThatTuneProps {
+  activeTeamName?: string;
+  isDemo?: boolean;
   onFinish: (score: number) => void;
   onBack: () => void;
-  onUpdateMeta?: (meta: { title: string; score: number; roundInfo?: string }) => void;
+  onUpdateMeta?: (meta: {
+    title: string;
+    score: number;
+    roundInfo?: string;
+    timeLeft?: number;
+    totalTime?: number;
+    onEndGame?: () => void;
+  }) => void;
 }
 
 interface TrackSubmission {
@@ -27,18 +38,20 @@ interface TrackSubmission {
   enteredArtist: string;
 }
 
-export default function NameThatTune({ onFinish, onBack, onUpdateMeta }: NameThatTuneProps) {
-  // 10 tracks per play
-  const [tracks, setTracks] = useState<TuneItem[]>(() => {
-    return [...TUNES_POOL].sort(() => 0.5 - Math.random()).slice(0, 10);
+const TRACK_TIMEOUT_SECONDS = 60; // 1 min per track
+
+export default function NameThatTune({ activeTeamName, isDemo = false, onFinish, onBack, onUpdateMeta }: NameThatTuneProps) {
+  // 10 tracks per play (non-repeating until exhausted, strictly seeded data)
+  const [tracks] = useState<TuneItem[]>(() => {
+    return pickNonRepeatingItems("epc_used_tunes", TUNES_POOL, 10, (t) => t.id);
   });
 
   useEffect(() => {
-    fetchGameContent().then((content) => {
-      if (content?.tunes && content.tunes.length > 0) {
-        setTracks([...content.tunes].sort(() => 0.5 - Math.random()).slice(0, 10));
-      }
-    });
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
   }, []);
 
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -46,19 +59,19 @@ export default function NameThatTune({ onFinish, onBack, onUpdateMeta }: NameTha
   const [artistInput, setArtistInput] = useState("");
   const [submissions, setSubmissions] = useState<TrackSubmission[]>([]);
 
-  // 30s timer per track
-  const [timeLeft, setTimeLeft] = useState(30);
+  // 60s (1 min) timer per track
+  const [timeLeft, setTimeLeft] = useState(TRACK_TIMEOUT_SECONDS);
   const [isCompletedPhase, setIsCompletedPhase] = useState(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const currentTrack = tracks[currentIdx] || TUNES_POOL[0];
 
-  // 30s countdown timer effect
+  // 60s countdown timer effect
   useEffect(() => {
     if (isCompletedPhase) return;
 
-    setTimeLeft(30);
+    setTimeLeft(TRACK_TIMEOUT_SECONDS);
     if (timerRef.current) clearInterval(timerRef.current);
 
     timerRef.current = setInterval(() => {
@@ -104,6 +117,25 @@ export default function NameThatTune({ onFinish, onBack, onUpdateMeta }: NameTha
       sound.playSuccess();
       confetti({ particleCount: 70, spread: 60 });
       setIsCompletedPhase(true);
+
+      const targetTeam = activeTeamName || getStoredActiveTeam();
+      if (targetTeam) {
+        const payloadItems: NameThatTuneSubmissionItem[] = newSubs.map((sub, idx) => ({
+          trackIdx: idx,
+          lyric: sub.track.lyric,
+          expectedSong: sub.track.song,
+          expectedArtist: sub.track.artist,
+          genre: sub.track.genre,
+          year: sub.track.year,
+          enteredSong: sub.enteredSong,
+          enteredArtist: sub.enteredArtist,
+          songScore: 0,
+          artistScore: 0,
+        }));
+        if (!isDemo) {
+          submitGameAnswers(targetTeam, "nameThatTune", { items: payloadItems });
+        }
+      }
     }
   };
 
@@ -112,31 +144,68 @@ export default function NameThatTune({ onFinish, onBack, onUpdateMeta }: NameTha
     onBack();
   };
 
+  const onUpdateMetaRef = useRef(onUpdateMeta);
+  useEffect(() => {
+    onUpdateMetaRef.current = onUpdateMeta;
+  });
+
   useEffect(() => {
     if (!isCompletedPhase) {
-      onUpdateMeta?.({
+      onUpdateMetaRef.current?.({
         title: "Name That Tune",
         score: 0,
         roundInfo: `Track ${currentIdx + 1}/10 • ${timeLeft}s Left`,
+        timeLeft,
+        totalTime: 60,
+        onEndGame: () => {
+          if (timerRef.current) clearInterval(timerRef.current);
+          const lastSub: TrackSubmission = {
+            track: tracks[currentIdx] || currentTrack,
+            enteredSong: songInput.trim(),
+            enteredArtist: artistInput.trim(),
+          };
+          const allSubs = [...submissions, lastSub];
+          setSubmissions(allSubs);
+          setIsCompletedPhase(true);
+
+          const targetTeam = activeTeamName || getStoredActiveTeam();
+          if (targetTeam) {
+            const payloadItems: NameThatTuneSubmissionItem[] = allSubs.map((sub, idx) => ({
+              trackIdx: idx,
+              lyric: sub.track.lyric,
+              expectedSong: sub.track.song,
+              expectedArtist: sub.track.artist,
+              genre: sub.track.genre,
+              year: sub.track.year,
+              enteredSong: sub.enteredSong,
+              enteredArtist: sub.enteredArtist,
+              songScore: 0,
+              artistScore: 0,
+            }));
+            if (!isDemo) {
+              submitGameAnswers(targetTeam, "nameThatTune", { items: payloadItems });
+            }
+          }
+        },
       });
     } else {
-      onUpdateMeta?.({
+      onUpdateMetaRef.current?.({
         title: "Name That Tune",
         score: 0,
         roundInfo: `Guesses Submitted to Host`,
       });
     }
-  }, [currentIdx, timeLeft, isCompletedPhase, onUpdateMeta]);
+  }, [currentIdx, timeLeft, isCompletedPhase]);
 
   return (
     <div className="game-arena">
       <div className="game-body-center tune-stage">
         {!isCompletedPhase ? (
           /* ========================================================================= */
-          /* PLAYING PHASE: SINGLE LYRIC + 30s TIMER + SONG & ARTIST INPUTS */
+          /* PLAYING PHASE: SINGLE LYRIC + 60s (1 MIN) TIMER + SONG & ARTIST INPUTS */
           /* ========================================================================= */
           <div style={{ width: "100%", maxWidth: "800px" }}>
-            {/* Top Status & 30s Timer Bar */}
+            {/* Top Status & 60s Timer Bar */}
             <div
               style={{
                 background: "var(--paper)",
@@ -229,9 +298,9 @@ export default function NameThatTune({ onFinish, onBack, onUpdateMeta }: NameTha
                   lineHeight: 1.45,
                   fontStyle: "italic",
                   padding: "0.8rem 1rem",
-                  background: "rgba(91, 190, 255, 0.1)",
+                  background: "rgba(245, 175, 25, 0.12)",
                   borderRadius: "14px",
-                  border: "2px dashed var(--ink)",
+                  border: "2px dashed var(--gold-primary)",
                 }}
               >
                 “{currentTrack.lyric}”
@@ -472,8 +541,8 @@ export default function NameThatTune({ onFinish, onBack, onUpdateMeta }: NameTha
                       style={{
                         padding: "0.4rem 0.8rem",
                         borderRadius: "8px",
-                        background: "rgba(61, 214, 140, 0.15)",
-                        border: "1.5px solid var(--c-grass)",
+                        background: "rgba(245, 175, 25, 0.15)",
+                        border: "1.5px solid var(--gold-primary)",
                         color: "var(--ink)",
                         fontWeight: 800,
                         fontSize: "0.82rem",

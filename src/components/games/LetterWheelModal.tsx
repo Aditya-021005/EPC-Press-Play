@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { PLAYABLE_LETTERS } from "@/data/categories";
 import { sound } from "@/lib/audio";
 import confetti from "canvas-confetti";
@@ -29,10 +30,27 @@ export default function LetterWheelModal({
   onSelectLetter,
   currentLetter,
 }: LetterWheelModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [landedLetter, setLandedLetter] = useState<string | null>(null);
   const [hasSpun, setHasSpun] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock body scroll and prevent background jumping when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   const wheelSize = 320;
   const cx = wheelSize / 2;
@@ -101,9 +119,9 @@ export default function LetterWheelModal({
     }, spinDuration);
   }, [isSpinning, rotation, angleStep]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  return createPortal(
     <div className="wheel-modal-overlay" onClick={isSpinning ? undefined : onClose}>
       <div className="wheel-modal-card" onClick={(e) => e.stopPropagation()}>
         {/* Close Button */}
@@ -302,6 +320,7 @@ export default function LetterWheelModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

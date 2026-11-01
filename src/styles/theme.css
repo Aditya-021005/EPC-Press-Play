@@ -27,13 +27,24 @@
   --muted-stage: #c8b8ec;
   --muted-paper: #5d4680;
 
-  /* ---- Game accents (Arabian Gemstones) ---- */
-  --c-grass: #10b981;  /* Emerald Oasis */
-  --c-sun: #f5af19;    /* Sultan Gold */
-  --c-sky: #38bdf8;    /* Persian Sapphire */
-  --c-grape: #b388ff;  /* Royal Amethyst */
-  --c-coin: #f59e0b;   /* Topaz / Dinar */
-  --c-cherry: #f43f5e; /* Arabian Ruby */
+  /* ---- Royal Purple & Radiant Gold Palette (Core Theme Tokens) ---- */
+  --c-gold-primary: #f5af19; /* Sultan Imperial Gold */
+  --c-gold-bright: #ffd700;  /* Radiant Luminous Gold */
+  --c-gold-amber: #e69500;   /* Rich Amber Gold */
+  --c-gold-dark: #b37400;    /* Antique Burnished Gold */
+
+  --c-purple-royal: #8b5cf6; /* Royal Arabian Violet */
+  --c-purple-deep: #7c3aed;  /* Imperial Velvet Purple */
+  --c-purple-bright: #a855f7;/* Radiant Amethyst */
+  --c-purple-mystic: #6d28d9;/* Deep Midnight Violet */
+
+  /* ---- Harmonized Game Accents (Purple & Gold Only) ---- */
+  --c-grass: #ffd700;   /* Imperial Shimmering Gold */
+  --c-sun: #8b5cf6;     /* Royal Arabian Violet */
+  --c-sky: #f5af19;     /* Sultan Gold */
+  --c-grape: #a855f7;   /* Radiant Amethyst Purple */
+  --c-coin: #e69500;    /* Rich Amber Gold */
+  --c-cherry: #7c3aed;  /* Imperial Deep Velvet Purple */
 
   /* ---- Type ---- */
   --font-display: var(--font-hub, ui-sans-serif), system-ui, sans-serif;
@@ -46,18 +57,18 @@
   --radius-full: 9999px;
   --transition: 0.15s ease;
 
-  /* ---- Legacy aliases ---- */
+  /* ---- Legacy aliases (Purple & Gold Only) ---- */
   --bg-dark: var(--backdrop);
   --bg-card: rgba(255, 255, 255, 0.06);
   --bg-card-hover: rgba(255, 255, 255, 0.1);
   --border-glass: rgba(245, 175, 25, 0.25);
   --border-neon: rgba(245, 175, 25, 0.5);
-  --neon-cyan: var(--c-sky);
-  --neon-green: var(--c-grass);
-  --neon-yellow: var(--c-sun);
-  --neon-pink: var(--c-cherry);
-  --neon-purple: var(--c-grape);
-  --neon-red: var(--c-cherry);
+  --neon-cyan: #8b5cf6;
+  --neon-green: #ffd700;
+  --neon-yellow: #f5af19;
+  --neon-pink: #a855f7;
+  --neon-purple: #7c3aed;
+  --neon-red: #6d28d9;
   --gold: var(--gold-primary);
   --text-main: var(--on-stage);
   --text-muted: var(--muted-stage);
